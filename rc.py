@@ -1,8 +1,10 @@
 import requests
 
+from os import environ
+
 
 class Client:
-    def __init__(self, id, secret, api_root='https://www.recurse.com/api/v1'):
+    def __init__(self, id=environ['RC_CLIENT_ID'], secret=environ['RC_CLIENT_SECRET'], api_root=environ['RC_API_ROOT']):
         self.id = id
         self.secret = secret
         self.api_root = api_root
