@@ -86,18 +86,19 @@ class Bot():
         list defaults to ALL zulip streams
 
 """
-if __name__ == "__main__":
+
+def run_bot():
     ZULIP_USERNAME = os.environ['ZULIP_RSVP_EMAIL']
     ZULIP_API_KEY = os.environ['ZULIP_RSVP_KEY']
     ZULIP_SITE = os.getenv('ZULIP_RSVP_SITE', 'https://recurse.zulipchat.com')
     KEY_WORD = os.getenv('ZULIP_KEY_WORD', 'rsvp')
     SANDBOX_STREAM = os.getenv('ZULIP_RSVP_SANDBOX_STREAM', None)
     SUBSCRIBED_STREAMS = []
-    new_bot = Bot(
+    bot = Bot(
         ZULIP_USERNAME,
         ZULIP_API_KEY,
         KEY_WORD,
         SUBSCRIBED_STREAMS,
         ZULIP_SITE,
     )
-    new_bot.main()
+    bot.main()
