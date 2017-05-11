@@ -578,15 +578,15 @@ class RSVPDateTest(RSVPTest):
         )
 
     def test_set_past_date(self):
-        output = self.issue_command('rsvp set date 02/25/1000')
+        output = self.issue_command('rsvp set date 02/25/2000')
 
         self.assertIn(
-            'Oops! **02/25/1000** is not a valid date in the **future**!',
+            'Oops! **02/25/2000** is not a valid date in the **future**!',
             output[0]['body']
         )
 
         self.assertNotEqual(
-            '1000-02-25',
+            '2000-02-25',
             self.event['date']
         )
 
@@ -854,8 +854,8 @@ class RSVPMessageTypesTest(RSVPTest):
 class RSVPMultipleCommandsTest(RSVPTest):
     def test_rsvp_multiple_commands_with_trailing_spaces(self):
         commands = """
-rsvp set time 10:30 
-rsvp set date 02/25/2099 
+rsvp set time 10:30
+rsvp set date 02/25/2099
 """
         output = self.issue_command(commands)
 
