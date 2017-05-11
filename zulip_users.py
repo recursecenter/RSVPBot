@@ -17,7 +17,6 @@ def _get_zulip_client():
     site = os.getenv('ZULIP_RSVP_SITE', 'https://recurse.zulipchat.com')
 
     client = zulip.Client(username, api_key, site=site)
-    client._register('get_users', method='GET', url='users')
     return client
 
 
@@ -58,7 +57,7 @@ def update_zulip_user_dict(updated_info=None, zulip_client=None):
         zusers.zulip_users.update(new_entry)
     else:
         client = zulip_client or _get_zulip_client()
-        users_response = client.get_users()
+        users_response = client.get_members()
         if users_response['result'] == 'success':
             users_from_zulip_api = users_response['members']
             for user in users_from_zulip_api:

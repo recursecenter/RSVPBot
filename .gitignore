@@ -62,5 +62,7 @@ docs/_build/
 target/
 events.json
 
-# Virtualenv
+
 venv
+.vscode
+.env
