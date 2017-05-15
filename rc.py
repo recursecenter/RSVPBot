@@ -9,8 +9,8 @@ class Client:
         self.secret = secret
         self.api_root = api_root
 
-    def get_events(self):
-        return self.get('events', params={'created_at_or_after': '5/10/17'})
+    def get_events(self, created_at_or_after):
+        return self.get('events', params={'created_at_or_after': created_at_or_after.isoformat()})
 
     def get(self, path, params={}):
         auth = (self.id, self.secret)

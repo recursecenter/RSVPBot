@@ -36,6 +36,7 @@ pyasn1-modules==0.0.8
 pycparser==2.14
 pycrypto==2.6.1
 pyOpenSSL==0.15.1
+python-dateutil==2.6.0
 python-editor==1.0.3
 pytimeparse==1.1.5
 pytz==2015.2
