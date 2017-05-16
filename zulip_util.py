@@ -2,6 +2,7 @@ import os
 import zulip
 
 import config
+import strings
 
 
 def make_client():
@@ -12,4 +13,15 @@ def make_client():
     )
 
 def announce_event(event):
-    client = None
+    client = make_client()
+    client.send_message({
+        "type": "stream",
+        "to": config.rsvpbot_stream,
+        "subject": config.rsvpbot_announce_subject,
+        "content": strings.ANNOUNCE_MESSAGE.format(
+            title=event.title,
+            url=event.url,
+            timestamp=event.timestamp(),
+            created_by=event.created_by
+        )
+    })

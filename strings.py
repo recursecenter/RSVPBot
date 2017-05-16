@@ -21,3 +21,14 @@ ERROR_MOVE_ALREADY_AN_EVENT = "Oops! `%s` is already an RSVPBot event!"
 ERROR_CALENDAR_ENVS_NOT_SET = 'Oops! Adding to Calendar not currently supported.'
 ERROR_DATE_AND_TIME_NOT_SET = 'Oops! The `date` and `time` are required to add this to the calendar!'
 ERROR_DURATION_NOT_SET = 'Oops! The event `duration` is required to add this to the calendar!'
+
+
+
+ANNOUNCE_MESSAGE = """
+**[{title}]({url})**
+{timestamp}
+Created by {created_by}
+
+To start an RSVPBot thread for this event:
+```rsvp init {url}```
+""".strip()

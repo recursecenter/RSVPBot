@@ -27,5 +27,9 @@ def start():
     poller.daemon = True
     poller.start()
 
+    bot.join()
+    poller.join()
+
+
 if __name__ == "__main__":
     start()

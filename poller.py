@@ -1,11 +1,12 @@
-import rc
+from datetime import datetime, timedelta
+import traceback
 import time
+
 import dateutil.parser
 import pytz
 
 from server import db, Event
-from datetime import datetime, timedelta
-
+import rc
 
 def parse_time(event, attr, utc=False):
     if utc:
@@ -15,7 +16,7 @@ def parse_time(event, attr, utc=False):
     return dateutil.parser.parse(event[attr]).astimezone(tz)
 
 def utcnow():
-    return datetime.utcnow().astimezone(pytz.utc)
+    return datetime.utcnow().replace(tzinfo=pytz.utc)
 
 def event_in(events, e):
     for event in events:
@@ -51,7 +52,12 @@ def fetch_new_events(client):
 def make_event(e):
     return Event(
         recurse_id=e['id'],
-        created_at=parse_time(e, 'created_at', utc=True)
+        created_at=parse_time(e, 'created_at', utc=True),
+        start_time=parse_time(e, 'start_time'),
+        end_time=parse_time(e, 'end_time'),
+        created_by=e['created_by']['name'],
+        url=e['url'],
+        title=e['title']
     )
 
 def fetch_and_insert_new_events(client):
@@ -72,6 +78,10 @@ def run_poller():
     client = rc.Client()
 
     while True:
-        fetch_and_insert_new_events(client)
-        update_tracked_events(client)
+        try:
+            fetch_and_insert_new_events(client)
+            update_tracked_events(client)
+        except BaseException:
+            print(traceback.format_exc())
+
         time.sleep(15)
