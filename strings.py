@@ -4,7 +4,7 @@ MSG_TIME_SET = 'The time for **%s** has been set to **%02d:%02d**!.\n`rsvp help`
 MSG_DURATION_SET = 'The duration for **%s** has been set to **%s**!.\n`rsvp help` for more options.'
 MSG_TIME_SET_ALLDAY = '**%s** is now an all day long event.'
 MSG_STRING_ATTR_SET = "The %s for this event has been set to **%s**!\n`rsvp help` for more options."
-MSG_ATTENDANCE_LIMIT_SET = "The attendance limit for this event has been set to **%d**! Hurry up and `rsvp yes` now!.\n`rsvp help` for more options"
+MSG_ATTENDANCE_LIMIT_SET = "The attendance limit for this event has been set to **%d**! Hurry up and `rsvpyes` now!.\n`rsvp help` for more options"
 MSG_EVENT_CANCELED = "The event has been canceled!"
 MSG_EVENT_MOVED = "This event has been moved to [%s](%s)!"
 MSG_ADDED_TO_CALENDAR = "Event [added to {calendar_name} Calendar]({url})!"
@@ -32,3 +32,14 @@ Created by {created_by}
 To start an RSVPBot thread for this event:
 ```rsvp init {url}```
 """.strip()
+
+ERROR_NO_EVENT_ID = """
+`rsvp init` must be passed an RC Calendar event ID or URL. For example:
+
+```
+rsvp init https://www.recurse.com/calendar/123-my-event
+```
+""".strip()
+
+ERROR_EVENT_NOT_FOUND = "Oops! I couldn't find this event: {}"
+ERROR_EVENT_ALREADY_INITIALIZED = "Oops! This event was already initialized here: {}"

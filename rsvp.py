@@ -111,6 +111,7 @@ class RSVP(object):
             'sender_email': message['sender_email'],
             'sender_full_name': message['sender_full_name'],
             'sender_id': message['sender_id'],
+            'stream': message['display_recipient'],
             'subject': message['subject'],
           }
 

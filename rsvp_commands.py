@@ -4,6 +4,7 @@ import re
 import datetime
 from time import mktime
 import random
+import urllib.parse
 
 from pytimeparse.timeparse import timeparse
 import parsedatetime
@@ -12,6 +13,8 @@ import calendar_events
 import strings
 import util
 from zulip_users import ZulipUsers
+from models import Event
+import rc
 
 
 class RSVPMessage(object):
@@ -71,45 +74,56 @@ class RSVPEventNeededCommand(RSVPCommand):
       return self.run(events, *args, **kwargs)
     return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NOT_AN_EVENT, sender_email))
 
+def extract_id(id_or_url):
+  try:
+    return int(id_or_url)
+  except ValueError:
+    pass
+
+  uri = urllib.parse.urlparse(id_or_url)
+
+  if uri.scheme not in ['http', 'https']:
+    return None
+
+  id_component = uri.path.split('/')[-1]
+  id_match = re.search(r"\d+", id_component)
+
+  if id_match:
+    return int(id_match[0])
+  else:
+    return None
 
 class RSVPInitCommand(RSVPCommand):
-  regex = r'init$'
+  regex = r'init (?P<rc_id_or_url>.+)'
 
   def run(self, events, *args, **kwargs):
-    sender_id   = kwargs.pop('sender_id')
-    event_id    = kwargs.pop('event_id')
-    subject    = kwargs.pop('subject')
+    stream = kwargs.pop('stream')
+    subject = kwargs.pop('subject')
     sender_email = kwargs.pop('sender_email')
+    rc_id_or_url = kwargs.pop('rc_id_or_url')
+    rc_event_id = extract_id(rc_id_or_url)
 
-    body = strings.MSG_INIT_SUCCESSFUL
+    if not rc_event_id:
+      return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NO_EVENT_ID, sender_email))
 
-    if events.get(event_id):
-      # Event already exists, error message, we can't initialize twice.
-      body = strings.ERROR_ALREADY_AN_EVENT
-      response = RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
+    event = Event.query.filter(Event.recurse_id == rc_event_id).first()
+
+    if event is None:
+      event_dict = rc.Client().get_event(rc_event_id)
+
+      if event_dict is None:
+        return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_EVENT_NOT_FOUND.format(rc_id_or_url), sender_email))
+
+      event = insert_event(event_dict)
     else:
-      # Update the dictionary with the new event and commit.
-      events.update(
-        {
-          event_id: {
-            'name': subject,
-            'description': None,
-            'place': None,
-            'creator': sender_id,
-            'yes': [sender_email],
-            'no': [],
-            'maybe': [],
-            'time': None,
-            'limit': None,
-            'date': '%s' % datetime.date.today(),
-            'calendar_event': None,
-            'duration': None,
-          }
-        }
-      )
-      response = RSVPCommandResponse(events, RSVPMessage('stream', body))
+      event.refresh_from_api()
 
-    return response
+    if event.already_initialized():
+      return RSVPCommandResponse(events, RSVPMessage('stream', strings.ERROR_EVENT_ALREADY_INITIALIZED.format(event.zulip_link())))
+
+    event.update(stream=stream, subject=subject)
+
+    return RSVPCommandResponse(events, RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL))
 
 
 class RSVPSetDurationCommand(RSVPEventNeededCommand):

@@ -3,6 +3,7 @@ import zulip
 
 import config
 import strings
+import util
 
 
 def make_client():
@@ -25,3 +26,5 @@ def announce_event(event):
             created_by=event.created_by
         )
     })
+
+stream_topic_to_narrow_url = util.stream_topic_to_narrow_url

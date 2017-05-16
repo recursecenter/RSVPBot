@@ -2,18 +2,10 @@ from datetime import datetime, timedelta
 import traceback
 import time
 
-import dateutil.parser
 import pytz
 
-from server import db, Event
+from models import db, Event, make_event, parse_time
 import rc
-
-def parse_time(event, attr, utc=False):
-    if utc:
-        tz = pytz.utc
-    else:
-        tz = pytz.timezone(event['timezone'])
-    return dateutil.parser.parse(event[attr]).astimezone(tz)
 
 def utcnow():
     return datetime.utcnow().replace(tzinfo=pytz.utc)
@@ -48,17 +40,6 @@ def fetch_new_events(client):
     future_events = [e for e in client.get_events(created_at) if parse_time(e, 'start_time') > now]
 
     return remove_known_events(future_events)
-
-def make_event(e):
-    return Event(
-        recurse_id=e['id'],
-        created_at=parse_time(e, 'created_at', utc=True),
-        start_time=parse_time(e, 'start_time'),
-        end_time=parse_time(e, 'end_time'),
-        created_by=e['created_by']['name'],
-        url=e['url'],
-        title=e['title']
-    )
 
 def fetch_and_insert_new_events(client):
     events = fetch_new_events(client)
