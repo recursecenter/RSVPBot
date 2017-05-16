@@ -31,3 +31,9 @@ def get_event(id):
 
 def get_events(created_at_or_after):
     return Client().get_events(created_at_or_after)
+
+def join(event, zulip_id):
+    pass
+
+def leave(event, zulip_id):
+    pass

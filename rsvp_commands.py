@@ -205,12 +205,7 @@ class RSVPMoveCommand(RSVPEventNeededCommand):
     return RSVPCommandResponse(events, RSVPMessage('stream', body), success_msg)
 
 
-class LimitReachedException(Exception):
-  pass
-
-
 class RSVPConfirmCommand(RSVPEventNeededCommand):
-
   yes_answers = (
     "ye(s+?)",
     "yea(h+?)",
@@ -266,8 +261,8 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
     " Oh no!!",
   ]
 
-  def generate_response(self, decision, event_id, funkify=False):
-      response_string = self.responses.get(decision) % event_id
+  def generate_response(self, decision, event, funkify=False):
+      response_string = self.responses.get(decision) % event.title
       if not funkify:
           return response_string
       if decision == 'yes':
@@ -276,61 +271,34 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
         return response_string + random.choice(self.funky_no_postfixes)
       return response_string
 
-  def confirm(self, event, event_id, sender_email, decision):
-    # Temporary kludge to add a 'maybe' array to legacy events. Can be removed after
-    # all currently logged events have passed.
-    if ('maybe' not in event.keys()):
-      event['maybe'] = []
-
-    # If they're in a different response list, take them out of it.
-    for response in self.responses.keys():
-      # prevent duplicates if replying multiple times
-      if (response == decision):
-        # if they're already in that list, nothing to do
-        if (sender_email not in event[response]):
-          event[response].append(sender_email)
-      # else, remove all instances of them from other response lists.
-      elif sender_email in event[response]:
-        event[response] = [value for value in event[response] if value != sender_email]
-      calendar_event_id = event.get('calendar_event') and event['calendar_event']['id']
-      if calendar_event_id:
-        try:
-          calendar_events.update_gcal_event(event, event_id)
-        except calendar_events.KeyfilePathNotSpecifiedError:
-          pass
-
-    return event
-
-  def attempt_confirm(self, event, event_id, sender_email, decision, limit):
-    if decision == 'yes' and limit:
-      available_seats = limit - len(event['yes'])
-      # In this case, we need to do some extra checking for the attendance limit.
-      if (available_seats - 1 < 0):
-        raise LimitReachedException()
-
-    return self.confirm(event, event_id, sender_email, decision)
+  def get_decision(self, yes_decision, no_decision, maybe_decision, **kwargs):
+    if yes_decision:
+      return 'yes'
+    elif no_decision:
+      return 'no'
+    else:
+      return 'maybe'
 
   def run(self, events, *args, **kwargs):
-    event_id = kwargs.pop('event_id')
-    event = kwargs.pop('event')
-    yes_decision = kwargs.pop('yes_decision')
-    no_decision = kwargs.pop('no_decision')
-    decision = 'yes' if yes_decision else ('no' if no_decision else 'maybe')
-    sender_name = kwargs.pop('sender_full_name')
-    sender_email = kwargs.pop('sender_email')
+    event = kwargs['event']
+    sender_id = kwargs['sender_id']
+    decision = self.get_decision(**kwargs)
 
-    limit = event['limit']
+    if decision == 'maybe':
+      return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_RSVP_MAYBE_NOT_SUPPORTED, kwargs['sender_email']))
+    elif decision == 'yes':
+      # special cases to handle:
+      # - event canceled
+      # - event over capacity and past deadline
+      # - event over capacity
+      # - event past deadline
+      rc.join(event, sender_id)
+    else:
+      rc.leave(event, sender_id)
 
-    try:
-      event = self.attempt_confirm(event, event_id,  sender_email, decision, limit)
+    response = self.generate_response(decision, event, funkify=(random.random() < 0.1))
 
-      # Update the events dict with the new event.
-      events[event_id] = event
-      # 1 in 10 chance of generating a funky response
-      response = self.generate_response(decision, event_id, funkify=(random.random() < 0.1))
-    except LimitReachedException:
-      response = strings.ERROR_LIMIT_REACHED
-    return RSVPCommandResponse(events, RSVPMessage('private', response, sender_email))
+    return RSVPCommandResponse(events, RSVPMessage('private', response, kwargs['sender_email']))
 
 
 class RSVPPingCommand(RSVPEventNeededCommand):
