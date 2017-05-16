@@ -1,10 +1,10 @@
 import requests
 
-from os import environ
+import config
 
 
 class Client:
-    def __init__(self, id=environ['RC_CLIENT_ID'], secret=environ['RC_CLIENT_SECRET'], api_root=environ['RC_API_ROOT']):
+    def __init__(self, id=config.rc_client_id, secret=config.rc_client_secret, api_root=config.rc_api_root):
         self.id = id
         self.secret = secret
         self.api_root = api_root

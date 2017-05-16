@@ -32,8 +32,11 @@ def set_token(mapper, conn, event):
         token = secrets.token_hex(16)
         if Event.query.filter(Event.token == token).count() == 0:
             break
-
     event.token = token
+
+@sqlalchemy.event.listens_for(Event, 'after_insert')
+def announce_on_zulip(mapper, conn, event):
+    zulip_util.announce_event(event)
 
 @app.route('/init')
 def init_event():

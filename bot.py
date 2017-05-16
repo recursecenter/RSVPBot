@@ -1,10 +1,10 @@
 #! /usr/local/bin/python
 import os
-
 import zulip
 
 import rsvp
 import zulip_users
+import config
 
 
 class Bot():
@@ -88,17 +88,12 @@ class Bot():
 """
 
 def run_bot():
-    ZULIP_USERNAME = os.environ['ZULIP_RSVP_EMAIL']
-    ZULIP_API_KEY = os.environ['ZULIP_RSVP_KEY']
-    ZULIP_SITE = os.getenv('ZULIP_RSVP_SITE', 'https://recurse.zulipchat.com')
-    KEY_WORD = os.getenv('ZULIP_KEY_WORD', 'rsvp')
-    SANDBOX_STREAM = os.getenv('ZULIP_RSVP_SANDBOX_STREAM', None)
     SUBSCRIBED_STREAMS = []
     bot = Bot(
-        ZULIP_USERNAME,
-        ZULIP_API_KEY,
-        KEY_WORD,
+        config.zulip_username,
+        config.zulip_api_key,
+        config.key_word,
         SUBSCRIBED_STREAMS,
-        ZULIP_SITE,
+        config.zulip_site
     )
     bot.main()
