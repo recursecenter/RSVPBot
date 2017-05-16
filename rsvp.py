@@ -18,18 +18,24 @@ class RSVP(object):
     self.command_list = (
       rsvp_commands.RSVPInitCommand(key_word),
       rsvp_commands.RSVPHelpCommand(key_word),
-      rsvp_commands.RSVPCancelCommand(key_word),
       rsvp_commands.RSVPMoveCommand(key_word),
+      rsvp_commands.RSVPSummaryCommand(key_word),
+      rsvp_commands.RSVPPingCommand(key_word),
+      rsvp_commands.RSVPCreditsCommand(key_word),
+
+      # Command supported on recurse.com
+      rsvp_commands.RSVPCancelCommand(key_word),
       rsvp_commands.RSVPSetLimitCommand(key_word),
       rsvp_commands.RSVPSetDateCommand(key_word),
       rsvp_commands.RSVPSetTimeCommand(key_word),
       rsvp_commands.RSVPSetTimeAllDayCommand(key_word),
-      rsvp_commands.RSVPSetStringAttributeCommand(key_word),
-      rsvp_commands.RSVPSummaryCommand(key_word),
-      rsvp_commands.RSVPPingCommand(key_word),
-      rsvp_commands.RSVPCreditsCommand(key_word),
-      rsvp_commands.RSVPCreateCalendarEventCommand(key_word),
       rsvp_commands.RSVPSetDurationCommand(key_word),
+      rsvp_commands.RSVPSetLocationCommand(key_word),
+      rsvp_commands.RSVPSetPlaceCommand(key_word),
+      rsvp_commands.RSVPSetDescriptionCommand(key_word),
+
+      # Command no longer supported anywhere
+      rsvp_commands.RSVPCreateCalendarEventCommand(key_word),
 
       # This needs to be at last for fuzzy yes|no checking
       rsvp_commands.RSVPConfirmCommand(key_word)
@@ -52,11 +58,6 @@ class RSVP(object):
   def __exit__(self, type, value, traceback):
     """Before the program terminates, commit events."""
     self.commit_events()
-
-  def get_this_event(self, message):
-    """Returns the event relevant to this Zulip thread."""
-    event_id = self.event_id(message)
-    return self.events.get(event_id)
 
   def process_message(self, message):
     """Processes the received message and returns a new message, to send back to the user."""
@@ -97,8 +98,6 @@ class RSVP(object):
     If there's absolutely no match, we return None, which, for the purposes of this program,
     means no reply.
     """
-    event_id = self.event_id(message)
-
     regex = r'^{}'.format(self.key_word)
 
     if re.match(regex, content, flags=re.I):
@@ -106,8 +105,6 @@ class RSVP(object):
         matches = command.match(content)
         if matches:
           kwargs = {
-            'event': self.events.get(event_id),
-            'event_id': event_id,
             'sender_email': message['sender_email'],
             'sender_full_name': message['sender_full_name'],
             'sender_id': message['sender_id'],
@@ -154,15 +151,6 @@ class RSVP(object):
       'type': message.type,
       'body': message.body
     }
-
-  def event_id(self, message):
-    """Extract the `event_id` from a message.
-
-    An event's identifier is the concatenation of the 'display_recipient'
-    (zulip slang for the stream's name)
-    and the message's subject (aka the thread's title.)
-    """
-    return u'{}/{}'.format(message['display_recipient'], message['subject'])
 
 
 def normalize_whitespace(content):
