@@ -292,9 +292,9 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
       # - event over capacity and past deadline
       # - event over capacity
       # - event past deadline
-      rc.join(event, sender_id)
+      rc.join(event.recurse_id, sender_id)
     else:
-      rc.leave(event, sender_id)
+      rc.leave(event.recurse_id, sender_id)
 
     response = self.generate_response(decision, event, funkify=(random.random() < 0.1))
 
