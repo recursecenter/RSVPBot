@@ -25,3 +25,9 @@ class Client:
         url = self.api_root + '/' + path
 
         return requests.get(url, params=params, auth=auth)
+
+def get_event(id):
+    return Client().get_event(id)
+
+def get_events(created_at_or_after):
+    return Client().get_events(created_at_or_after)

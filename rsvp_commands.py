@@ -109,7 +109,7 @@ class RSVPInitCommand(RSVPCommand):
     event = Event.query.filter(Event.recurse_id == rc_event_id).first()
 
     if event is None:
-      event_dict = rc.Client().get_event(rc_event_id)
+      event_dict = rc.get_event(rc_event_id)
 
       if event_dict is None:
         return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_EVENT_NOT_FOUND.format(rc_id_or_url), sender_email))

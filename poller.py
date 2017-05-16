@@ -28,7 +28,7 @@ def remove_known_events(events):
 
     return [e for e in events if event_not_in(known_events, e)]
 
-def fetch_new_events(client):
+def fetch_new_events():
     oldest_event = Event.query.order_by(Event.created_at.desc()).first()
 
     if oldest_event is not None:
@@ -37,18 +37,18 @@ def fetch_new_events(client):
         created_at = utcnow() - timedelta(days=60)
 
     now = utcnow()
-    future_events = [e for e in client.get_events(created_at) if parse_time(e, 'start_time') > now]
+    future_events = [e for e in rc.get_events(created_at) if parse_time(e, 'start_time') > now]
 
     return remove_known_events(future_events)
 
-def fetch_and_insert_new_events(client):
-    events = fetch_new_events(client)
+def fetch_and_insert_new_events():
+    events = fetch_new_events()
     if events:
         records = [make_event(e) for e in events]
         db.session.add_all(records)
         db.session.commit()
 
-def update_tracked_events(client):
+def update_tracked_events():
     # 2. update existing events
     # get all IDs we're tracking
     # fetch those events from RC API
@@ -56,12 +56,10 @@ def update_tracked_events(client):
     pass
 
 def run_poller():
-    client = rc.Client()
-
     while True:
         try:
-            fetch_and_insert_new_events(client)
-            update_tracked_events(client)
+            fetch_and_insert_new_events()
+            update_tracked_events()
         except BaseException:
             print(traceback.format_exc())
 
