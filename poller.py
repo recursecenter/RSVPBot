@@ -26,6 +26,15 @@ def event_in(events, e):
 def event_not_in(events, e):
     return not event_in(events, e)
 
+def remove_known_events(events):
+    if not events:
+        return []
+
+    ids = [e['id'] for e in events]
+    known_events = Event.query.filter(Event.recurse_id.in_(ids)).all()
+
+    return [e for e in events if event_not_in(known_events, e)]
+
 def fetch_new_events(client):
     oldest_event = Event.query.order_by(Event.created_at.desc()).first()
 
@@ -35,16 +44,9 @@ def fetch_new_events(client):
         created_at = utcnow() - timedelta(days=60)
 
     now = utcnow()
-    events = [e for e in client.get_events(created_at) if parse_time(e, 'start_time') > now]
+    future_events = [e for e in client.get_events(created_at) if parse_time(e, 'start_time') > now]
 
-    ids = [e['id'] for e in events]
-
-    if ids:
-        known_events = Event.query.filter(Event.recurse_id.in_(ids)).all()
-    else:
-        known_events = []
-
-    return [e for e in events if event_not_in(known_events, e)]
+    return remove_known_events(future_events)
 
 def make_event(e):
     return Event(
