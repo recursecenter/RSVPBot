@@ -6,9 +6,6 @@ from time import mktime
 import random
 import urllib.parse
 
-from pytimeparse.timeparse import timeparse
-import parsedatetime
-
 import strings
 import util
 from models import Event, Session
