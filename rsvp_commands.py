@@ -14,6 +14,7 @@ import util
 from models import Event
 import rc
 import zulip_util
+import config
 
 
 def zulip_names_from_participants(participants):
@@ -112,6 +113,9 @@ class RSVPInitCommand(RSVPCommand):
     sender_email = kwargs.pop('sender_email')
     rc_id_or_url = kwargs.pop('rc_id_or_url')
     rc_event_id = extract_id(rc_id_or_url)
+
+    if stream == config.rsvpbot_stream and subject == config.rsvpbot_announce_subject:
+      return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_CANNOT_INIT_IN_ANNOUNCE_THREAD))
 
     if Event.query.filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
       return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_ALREADY_AN_EVENT, sender_email))

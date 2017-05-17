@@ -46,3 +46,4 @@ ERROR_EVENT_ALREADY_INITIALIZED = "Oops! This event was already initialized here
 ERROR_GOOGLE_CALENDAR_NO_LONGER_USED = "Oops! RSVPBot no longer uses Google Calendar, but it uses the [RC Calendar](https://www.recurse.com/calendar) instead. This event can be found [here]({})."
 ERROR_FUNCTIONALITY_MOVED = "Oops! RSVPBot doesn't support `rsvp {}` directly anymore. You can now do this [on the RC calendar]({})!"
 ERROR_RSVP_MAYBE_NOT_SUPPORTED = "Oops! `rsvp maybe` is no longer supported."
+ERROR_CANNOT_INIT_IN_ANNOUNCE_THREAD = "Oops! You cannot `rsvp init` in the announce thread."
