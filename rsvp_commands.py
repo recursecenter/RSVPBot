@@ -81,6 +81,9 @@ class RSVPEventNeededCommand(RSVPCommand):
     else:
       return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NOT_AN_EVENT, kwargs.get('sender_email')))
 
+def zulip_names_from_participants(participants):
+  zulip_ids = [p['person']['zulip_id'] for p in participants]
+  return zulip_util.get_names(zulip_ids)
 
 def extract_id(id_or_url):
   try:
@@ -296,29 +299,26 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
 
 class RSVPPingCommand(RSVPEventNeededCommand):
   regex = r'^({key_word} ping)$|({key_word} ping (?P<message>.+))$'
+  include_participants = True
 
   def __init__(self, prefix, *args, **kwargs):
     self.regex = self.regex.format(key_word=prefix)
 
-  def get_users_dict(self):
-    return ZulipUsers()
-
   def run(self, events, *args, **kwargs):
-    users = self.get_users_dict()
-
-    event = kwargs.pop('event')
+    event = kwargs['event']
+    api_response = kwargs['api_response']
     message = kwargs.get('message')
 
-    body = "**Pinging all participants who RSVP'd!!**\n"
+    if api_response['anonymize_participants']:
+      body = "Oops! Attendees are hidden for this event"
+    else:
+      body = "**Pinging all participants who RSVP'd!!**\n"
 
-    for participant in event['yes']:
-      body += "@**%s** " % users.convert_email_to_pingable_name(participant)
+      for name in zulip_names_from_participants(api_response['participants']):
+        body += "@**%s** " % name
 
-    for participant in event['maybe']:
-      body += "@**%s** " % users.convert_email_to_pingable_name(participant)
-
-    if message:
-      body += ('\n' + message)
+      if message:
+        body += '\n' + message
 
     return RSVPCommandResponse(events, RSVPMessage('stream', body))
 
@@ -371,20 +371,6 @@ class RSVPSummaryCommand(RSVPEventNeededCommand):
     api_response = kwargs['api_response']
     participants = api_response.get('participants')
 
-    """
-    **Name of the event**
-    |:---:|:---:
-    |**What**|description
-    |**When**|start & end time
-    |**Where**|location
-    |**Limit**|rsvp capacity & spots left
-    |**Deadline**|rsvp deadline
-
-    **Attendees (count)**
-    |:---:
-    |Name of person
-    """
-
     summary_table = '**%s**' % (event.title)
     summary_table += '\t|\t\n:---:|:---:\n'
 
@@ -413,8 +399,7 @@ class RSVPSummaryCommand(RSVPEventNeededCommand):
       attendees = "Participants are hidden for this event."
     else:
       attendees = '**Attendees**\n'
-      zulip_ids = [p['person']['zulip_id'] for p in api_response['participants']]
-      for name in zulip_util.get_names(zulip_ids):
+      for name in zulip_names_from_participants(api_response['participants']):
         attendees += name + '\n'
 
     body = summary_table + '\n\n' + attendees
