@@ -46,9 +46,9 @@ python tests.py
 --- | ---
 **`rsvp yes`**|Marks **you** as attending this event.
 **`rsvp no`**|Marks you as **not** attending this event.
-`rsvp init`|Initializes a thread as an RSVPBot event. Must be used before any other command.
+`rsvp init https://www.recurse.com/calendar/:id`|Initializes a thread as an RSVPBot event. Must be used before most other commands.
 `rsvp help`|Shows this handy table.
 `rsvp ping`|Pings everyone that has RSVP'd so far.
-`rsvp move <destination_url>`|Moves this event to another stream/topic. Requires full URL for the destination (e.g.'https://zulip.com/#narrow/stream/announce/topic/All.20Hands.20Meeting') (can only be called by the caller of `rsvp init`)
 `rsvp summary`|Displays a summary of this event, including the description, and list of attendees.
+`rsvp move <destination_url>`|Moves this event to another stream/topic. Requires full URL for the destination (e.g.'https://zulip.com/#narrow/stream/announce/topic/All.20Hands.20Meeting') (can only be called by the caller of `rsvp init`)
 `rsvp credits`|Lists all the awesome people that made RSVPBot a reality.
