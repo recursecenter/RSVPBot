@@ -245,6 +245,8 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
     "maybe": "You **might** be attending **%s**. It's complicated.",
   }
 
+  check_event = "You're still RSVP'd, but you should [check the event]({}) to make sure you can attend."
+
   funky_yes_prefixes = [
     "GET EXCITED!! ",
     "AWWW YISS!! ",
@@ -262,14 +264,14 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
   ]
 
   def generate_response(self, decision, event, funkify=False):
-      response_string = self.responses.get(decision) % event.title
-      if not funkify:
-          return response_string
-      if decision == 'yes':
-        return random.choice(self.funky_yes_prefixes) + response_string
-      elif decision == 'no':
-        return response_string + random.choice(self.funky_no_postfixes)
+    response_string = self.responses.get(decision) % event.title
+    if not funkify:
       return response_string
+    if decision == 'yes':
+      return random.choice(self.funky_yes_prefixes) + response_string
+    elif decision == 'no':
+      return response_string + random.choice(self.funky_no_postfixes)
+    return response_string
 
   def get_decision(self, yes_decision, no_decision, maybe_decision, **kwargs):
     if yes_decision:
@@ -283,20 +285,32 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
     event = kwargs['event']
     sender_id = kwargs['sender_id']
     decision = self.get_decision(**kwargs)
+    funkify = random.random() < 0.1
 
     if decision == 'maybe':
       return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_RSVP_MAYBE_NOT_SUPPORTED, kwargs['sender_email']))
     elif decision == 'yes':
-      # special cases to handle:
-      # - event canceled
-      # - event over capacity and past deadline
-      # - event over capacity
-      # - event past deadline
-      rc.join(event.recurse_id, sender_id)
+      result = rc.join(event.recurse_id, sender_id)
+
+      if result['joined']:
+        if result['over_capacity'] and result['past_deadline']:
+          response = "This event is over capacity and past the RSVP deadline! " + self.check_event.format(event.url)
+        elif result['over_capacity']:
+          response = "This event is over capacity! " + self.check_event.format(event.url)
+        elif result['past_deadline']:
+          response = "This event is past the RSVP deadline! " + self.check_event.format(event.url)
+        else:
+          response = self.generate_response('yes', event, funkify=funkify)
+      else:
+        if result['event_archived']:
+          response = "Oops! This event has been canceled, so you weren't able to RSVP."
+        elif result['rsvps_disabled']:
+          response = "Oops! RSVPs have been disabled for this event. You may be able to learn more [on the calendar]({}).".format(event.url)
+        else:
+          response = "Oops! Something went wrong. Here are the errors:\n\n" + "\n".join(result['errors'])
     else:
       rc.leave(event.recurse_id, sender_id)
-
-    response = self.generate_response(decision, event, funkify=(random.random() < 0.1))
+      response = self.generate_response('no', event, funkify=funkify)
 
     return RSVPCommandResponse(events, RSVPMessage('private', response, kwargs['sender_email']))
 
