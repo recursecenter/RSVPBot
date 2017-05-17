@@ -18,6 +18,30 @@ import rc
 import zulip_util
 
 
+def zulip_names_from_participants(participants):
+  zulip_ids = [p['person']['zulip_id'] for p in participants]
+  return zulip_util.get_names(zulip_ids)
+
+def extract_id(id_or_url):
+  try:
+    return int(id_or_url)
+  except ValueError:
+    pass
+
+  uri = urllib.parse.urlparse(id_or_url)
+
+  if uri.scheme not in ['http', 'https']:
+    return None
+
+  id_component = uri.path.split('/')[-1]
+  id_match = re.search(r"\d+", id_component)
+
+  if id_match:
+    return int(id_match[0])
+  else:
+    return None
+
+
 class RSVPMessage(object):
   """Class that represents a response from an RSVPCommand.
 
@@ -81,28 +105,6 @@ class RSVPEventNeededCommand(RSVPCommand):
     else:
       return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NOT_AN_EVENT, kwargs.get('sender_email')))
 
-def zulip_names_from_participants(participants):
-  zulip_ids = [p['person']['zulip_id'] for p in participants]
-  return zulip_util.get_names(zulip_ids)
-
-def extract_id(id_or_url):
-  try:
-    return int(id_or_url)
-  except ValueError:
-    pass
-
-  uri = urllib.parse.urlparse(id_or_url)
-
-  if uri.scheme not in ['http', 'https']:
-    return None
-
-  id_component = uri.path.split('/')[-1]
-  id_match = re.search(r"\d+", id_component)
-
-  if id_match:
-    return int(id_match[0])
-  else:
-    return None
 
 class RSVPInitCommand(RSVPCommand):
   regex = r'init (?P<rc_id_or_url>.+)'
@@ -138,14 +140,6 @@ class RSVPInitCommand(RSVPCommand):
     event.update(stream=stream, subject=subject)
 
     return RSVPCommandResponse(events, RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL))
-
-
-class RSVPCreateCalendarEventCommand(RSVPEventNeededCommand):
-  regex = r'add to calendar$'
-
-  def run(self, events, *args, **kwargs):
-    event = kwargs.pop('event')
-    return RSVPCommandResponse(events, RSVPMessage('stream', strings.ERROR_GOOGLE_CALENDAR_NO_LONGER_USED.format(event.url)))
 
 
 class RSVPHelpCommand(RSVPCommand):
@@ -327,7 +321,6 @@ class RSVPCreditsCommand(RSVPEventNeededCommand):
   regex = r'credits$'
 
   def run(self, events, *args, **kwargs):
-
     sender_email = kwargs.pop('sender_email')
 
     contributors = [
@@ -407,6 +400,14 @@ class RSVPSummaryCommand(RSVPEventNeededCommand):
     body = summary_table + '\n\n' + attendees
     return RSVPCommandResponse(events, RSVPMessage('stream', body))
 
+
+
+class RSVPCreateCalendarEventCommand(RSVPEventNeededCommand):
+  regex = r'add to calendar$'
+
+  def run(self, events, *args, **kwargs):
+    event = kwargs.pop('event')
+    return RSVPCommandResponse(events, RSVPMessage('stream', strings.ERROR_GOOGLE_CALENDAR_NO_LONGER_USED.format(event.url)))
 
 class RSVPFunctionalityMovedCommand(RSVPEventNeededCommand):
   def run(self, events, *args, **kwargs):
