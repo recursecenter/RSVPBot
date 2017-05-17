@@ -9,7 +9,6 @@ import urllib.parse
 from pytimeparse.timeparse import timeparse
 import parsedatetime
 
-import calendar_events
 import strings
 import util
 from models import Event

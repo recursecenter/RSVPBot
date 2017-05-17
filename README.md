@@ -24,11 +24,7 @@ export ZULIP_RSVP_KEY="<bot-key>"
 # Optional
 export ZULIP_RSVP_SITE="https://your-zulip-site.com"  # default is https://recurse.zulipchat.com
 export ZULIP_KEY_WORD="rsvp"                          # default is rsvp
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/file" # default is None
-export GOOGLE_CALENDAR_ID="abd123@group.calendar.com" # default is None
 ```
-
-To get set up with Google Application Credentials, see [the Google Credentials Setup Instructions](/google_calendar_instructions.md#google-application-credentials).
 
 ## Running
 First, make sure python requirements are installed:
