@@ -8,13 +8,8 @@ from strings import ERROR_INVALID_COMMAND
 
 class RSVP(object):
 
-  def __init__(self, key_word, filename='events.json'):
-    """
-    When created, this instance will try to open self.filename. It will always
-    keep a copy in memory of the whole events dictionary and commit it when necessary.
-    """
+  def __init__(self, key_word):
     self.key_word = key_word
-    self.filename = filename
     self.command_list = (
       rsvp_commands.RSVPInitCommand(key_word),
       rsvp_commands.RSVPHelpCommand(key_word),
@@ -40,24 +35,6 @@ class RSVP(object):
       # This needs to be at last for fuzzy yes|no checking
       rsvp_commands.RSVPConfirmCommand(key_word)
     )
-
-    try:
-      with open(self.filename, "r") as f:
-        try:
-          self.events = json.load(f)
-        except ValueError:
-          self.events = {}
-    except IOError:
-      self.events = {}
-
-  def commit_events(self):
-    """Write the whole events dictionary to the filename file."""
-    with open(self.filename, 'w+') as f:
-      json.dump(self.events, f)
-
-  def __exit__(self, type, value, traceback):
-    """Before the program terminates, commit events."""
-    self.commit_events()
 
   def process_message(self, message):
     """Processes the received message and returns a new message, to send back to the user."""
@@ -115,11 +92,7 @@ class RSVP(object):
           if matches.groupdict():
             kwargs.update(matches.groupdict())
 
-          response = command.execute(self.events, **kwargs)
-
-          # Allow for a single events object but multiple messaages to send
-          self.events = response.events
-          self.commit_events()
+          response = command.execute(**kwargs)
 
           # if it has multiple messages to send, then return that instead of
           # the pair

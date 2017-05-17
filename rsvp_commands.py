@@ -63,8 +63,7 @@ class RSVPMessage(object):
 
 
 class RSVPCommandResponse(object):
-  def __init__(self, events, *args):
-    self.events = events
+  def __init__(self, *args):
     self.messages = []
     for arg in args:
       if isinstance(arg, RSVPMessage):
@@ -83,31 +82,31 @@ class RSVPCommand(object):
   def match(self, input_str):
     return re.match(self.regex, input_str, flags=re.DOTALL | re.I)
 
-  def execute(self, events, *args, **kwargs):
+  def execute(self, *args, **kwargs):
     """execute() is just a convenience wrapper around __run()."""
-    return self.run(events, *args, **kwargs)
+    return self.run(*args, **kwargs)
 
 
 class RSVPEventNeededCommand(RSVPCommand):
   """Base class for a command where an event needs to exist prior to execution."""
   include_participants = False
 
-  def execute(self, events, *args, **kwargs):
+  def execute(self, *args, **kwargs):
     stream = kwargs.get('stream')
     subject = kwargs.get('subject')
     event = Event.query.filter(Event.stream == stream).filter(Event.subject == subject).first()
 
     if event:
       api_response = event.refresh_from_api(self.include_participants)
-      return self.run(events, *args, **{**kwargs, "event": event, "api_response": api_response})
+      return self.run(*args, **{**kwargs, "event": event, "api_response": api_response})
     else:
-      return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NOT_AN_EVENT, kwargs.get('sender_email')))
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_NOT_AN_EVENT, kwargs.get('sender_email')))
 
 
 class RSVPInitCommand(RSVPCommand):
   regex = r'init (?P<rc_id_or_url>.+)'
 
-  def run(self, events, *args, **kwargs):
+  def run(self, *args, **kwargs):
     stream = kwargs.pop('stream')
     subject = kwargs.pop('subject')
     sender_email = kwargs.pop('sender_email')
@@ -115,10 +114,10 @@ class RSVPInitCommand(RSVPCommand):
     rc_event_id = extract_id(rc_id_or_url)
 
     if Event.query.filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
-      return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_ALREADY_AN_EVENT, sender_email))
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_ALREADY_AN_EVENT, sender_email))
 
     if not rc_event_id:
-      return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NO_EVENT_ID, sender_email))
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_NO_EVENT_ID, sender_email))
 
     event = Event.query.filter(Event.recurse_id == rc_event_id).first()
 
@@ -126,18 +125,18 @@ class RSVPInitCommand(RSVPCommand):
       event_dict = rc.get_event(rc_event_id)
 
       if event_dict is None:
-        return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_EVENT_NOT_FOUND.format(rc_id_or_url), sender_email))
+        return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_EVENT_NOT_FOUND.format(rc_id_or_url), sender_email))
 
       event = insert_event(event_dict)
     else:
       event.refresh_from_api()
 
     if event.already_initialized():
-      return RSVPCommandResponse(events, RSVPMessage('stream', strings.ERROR_EVENT_ALREADY_INITIALIZED.format(event.zulip_link())))
+      return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_EVENT_ALREADY_INITIALIZED.format(event.zulip_link())))
 
     event.update(stream=stream, subject=subject)
 
-    return RSVPCommandResponse(events, RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL))
+    return RSVPCommandResponse(RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL))
 
 
 class RSVPHelpCommand(RSVPCommand):
@@ -147,15 +146,15 @@ class RSVPHelpCommand(RSVPCommand):
       readme_contents = readme_file.read()
       _, commands_table = readme_contents.split("## Commands\n")
 
-  def run(self, events, *args, **kwargs):
+  def run(self,  *args, **kwargs):
     sender_email = kwargs.pop('sender_email')
-    return RSVPCommandResponse(events, RSVPMessage('private', self.commands_table, sender_email))
+    return RSVPCommandResponse( RSVPMessage('private', self.commands_table, sender_email))
 
 
 class RSVPMoveCommand(RSVPEventNeededCommand):
   regex = r'move (?P<destination>.+)$'
 
-  def run(self, events, *args, **kwargs):
+  def run(self, *args, **kwargs):
     sender_id = kwargs.pop('sender_id')
     event = kwargs.pop('event')
     destination = kwargs.pop('destination').strip()
@@ -176,7 +175,7 @@ class RSVPMoveCommand(RSVPEventNeededCommand):
         body = strings.MSG_EVENT_MOVED % (destination_name, destination)
         success_msg = RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL, stream, subject)
 
-    return RSVPCommandResponse(events, RSVPMessage('stream', body), success_msg)
+    return RSVPCommandResponse(RSVPMessage('stream', body), success_msg)
 
 
 class RSVPConfirmCommand(RSVPEventNeededCommand):
@@ -255,14 +254,14 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
     else:
       return 'maybe'
 
-  def run(self, events, *args, **kwargs):
+  def run(self, *args, **kwargs):
     event = kwargs['event']
     sender_id = kwargs['sender_id']
     decision = self.get_decision(**kwargs)
     funkify = random.random() < 0.1
 
     if decision == 'maybe':
-      return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_RSVP_MAYBE_NOT_SUPPORTED, kwargs['sender_email']))
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_RSVP_MAYBE_NOT_SUPPORTED, kwargs['sender_email']))
     elif decision == 'yes':
       result = rc.join(event.recurse_id, sender_id)
 
@@ -286,7 +285,7 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
       rc.leave(event.recurse_id, sender_id)
       response = self.generate_response('no', event, funkify=funkify)
 
-    return RSVPCommandResponse(events, RSVPMessage('private', response, kwargs['sender_email']))
+    return RSVPCommandResponse(RSVPMessage('private', response, kwargs['sender_email']))
 
 
 class RSVPPingCommand(RSVPEventNeededCommand):
@@ -296,7 +295,7 @@ class RSVPPingCommand(RSVPEventNeededCommand):
   def __init__(self, prefix, *args, **kwargs):
     self.regex = self.regex.format(key_word=prefix)
 
-  def run(self, events, *args, **kwargs):
+  def run(self, *args, **kwargs):
     event = kwargs['event']
     api_response = kwargs['api_response']
     message = kwargs.get('message')
@@ -312,13 +311,13 @@ class RSVPPingCommand(RSVPEventNeededCommand):
       if message:
         body += '\n' + message
 
-    return RSVPCommandResponse(events, RSVPMessage('stream', body))
+    return RSVPCommandResponse(RSVPMessage('stream', body))
 
 
 class RSVPCreditsCommand(RSVPEventNeededCommand):
   regex = r'credits$'
 
-  def run(self, events, *args, **kwargs):
+  def run(self, *args, **kwargs):
     sender_email = kwargs.pop('sender_email')
 
     contributors = [
@@ -352,14 +351,14 @@ class RSVPCreditsCommand(RSVPEventNeededCommand):
 
     body += "\n\nThe code for this fork of **RSVPBot** can be found at https://github.com/recursecenter/RSVPBot.\n\nThe code for the original **RSVPBot** can be found at https://github.com/kokeshii/RSVPBot."
 
-    return RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
+    return RSVPCommandResponse(RSVPMessage('private', body, sender_email))
 
 
 class RSVPSummaryCommand(RSVPEventNeededCommand):
   regex = r'(summary$|status$)'
   include_participants = True
 
-  def run(self, events, *args, **kwargs):
+  def run(self, *args, **kwargs):
     event = kwargs['event']
     api_response = kwargs['api_response']
     participants = api_response.get('participants')
@@ -396,20 +395,20 @@ class RSVPSummaryCommand(RSVPEventNeededCommand):
         attendees += name + '\n'
 
     body = summary_table + '\n\n' + attendees
-    return RSVPCommandResponse(events, RSVPMessage('stream', body))
+    return RSVPCommandResponse(RSVPMessage('stream', body))
 
 
 
 class RSVPCreateCalendarEventCommand(RSVPEventNeededCommand):
   regex = r'add to calendar$'
 
-  def run(self, events, *args, **kwargs):
+  def run(self, *args, **kwargs):
     event = kwargs.pop('event')
-    return RSVPCommandResponse(events, RSVPMessage('stream', strings.ERROR_GOOGLE_CALENDAR_NO_LONGER_USED.format(event.url)))
+    return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_GOOGLE_CALENDAR_NO_LONGER_USED.format(event.url)))
 
 class RSVPFunctionalityMovedCommand(RSVPEventNeededCommand):
-  def run(self, events, *args, **kwargs):
-    return RSVPCommandResponse(events, RSVPMessage('stream', strings.ERROR_FUNCTIONALITY_MOVED.format(self.name, kwargs['event'].url)))
+  def run(self, *args, **kwargs):
+    return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_FUNCTIONALITY_MOVED.format(self.name, kwargs['event'].url)))
 
 class RSVPSetLimitCommand(RSVPFunctionalityMovedCommand):
   regex = r'set limit (?P<limit>\d+)$'
