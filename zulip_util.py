@@ -27,4 +27,10 @@ def announce_event(event):
         )
     })
 
+def get_names(ids):
+    client = make_client()
+    all_users = client.get_members()['members']
+    name_mapping = {user['user_id']: user['full_name'] for user in all_users}
+    return [name_mapping[id] for id in ids]
+
 stream_topic_to_narrow_url = util.stream_topic_to_narrow_url

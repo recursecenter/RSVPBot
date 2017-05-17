@@ -15,6 +15,7 @@ import util
 from zulip_users import ZulipUsers
 from models import Event
 import rc
+import zulip_util
 
 
 class RSVPMessage(object):
@@ -67,14 +68,16 @@ class RSVPCommand(object):
 
 class RSVPEventNeededCommand(RSVPCommand):
   """Base class for a command where an event needs to exist prior to execution."""
+  include_participants = False
+
   def execute(self, events, *args, **kwargs):
     stream = kwargs.get('stream')
     subject = kwargs.get('subject')
     event = Event.query.filter(Event.stream == stream).filter(Event.subject == subject).first()
 
     if event:
-      event.refresh_from_api()
-      return self.run(events, *args, **{**kwargs, "event": event})
+      api_response = event.refresh_from_api(self.include_participants)
+      return self.run(events, *args, **{**kwargs, "event": event, "api_response": api_response})
     else:
       return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NOT_AN_EVENT, kwargs.get('sender_email')))
 
@@ -361,48 +364,60 @@ class RSVPCreditsCommand(RSVPEventNeededCommand):
 
 class RSVPSummaryCommand(RSVPEventNeededCommand):
   regex = r'(summary$|status$)'
-
-  def get_users_dict(self):
-    return ZulipUsers()
+  include_participants = True
 
   def run(self, events, *args, **kwargs):
-    event = kwargs.pop('event')
-    users = self.get_users_dict()
+    event = kwargs['event']
+    api_response = kwargs['api_response']
+    participants = api_response.get('participants')
 
-    summary_table = '**%s**' % (event['name'])
+    """
+    **Name of the event**
+    |:---:|:---:
+    |**What**|description
+    |**When**|start & end time
+    |**Where**|location
+    |**Limit**|rsvp capacity & spots left
+    |**Deadline**|rsvp deadline
+
+    **Attendees (count)**
+    |:---:
+    |Name of person
+    """
+
+    summary_table = '**%s**' % (event.title)
     summary_table += '\t|\t\n:---:|:---:\n'
 
-    if event['description']:
-        summary_table += '**What**|%s\n' % event['description']
+    if api_response.get('description'):
+      summary_table += '**What**|%s\n' % api_response['description']
 
-    summary_table += '**When**|%s @ %s\n' % (event['date'], event['time'] or '(All day)')
+    summary_table += '**When**|%s\n' % event.timestamp()
 
-    if event['duration']:
-        summary_table += '**Duration**|%s\n' % datetime.timedelta(seconds=event['duration'])
+    if 'location' in api_response:
+      location = api_response['location']
+      location_components = filter(lambda x: x, [location.get('name'), location.get('address'), location.get('city')])
+      summary_table += '**Where**|%s\n' % ', '.join(location_components)
 
-    if event['place']:
-        summary_table += '**Where**|%s\n' % event['place']
+    if api_response.get('rsvp_capacity'):
+      limit_str = '%d/%d spots left' % (api_response['rsvp_capacity'] - api_response['participant_count'], api_response['rsvp_capacity'])
+      summary_table += '**Limit**|%s\n' % limit_str
 
-    if event['limit']:
-        limit_str = '%d/%d spots left' % (event['limit'] - len(event['yes']), event['limit'])
-        summary_table += '**Limit**|%s\n' % limit_str
+    if api_response.get('rsvp_deadline'):
+      deadline = models.parse_time(api_response, 'rsvp_deadline')
+      time = deadline.strftime("%-I:%M%p").lower()
+      zone = deadline.tzinfo.tzname(deadline)
+      date = deadline.strftime("%A, %b %-d, %Y")
+      summary_table += '**Deadline**|%s %s, %s\n' % (time, zone, date)
 
-    confirmation_table = 'YES ({}) |NO ({}) |MAYBE({}) \n:---:|:---:|:---:\n'
-
-    confirmation_table = confirmation_table.format(len(event['yes']), len(event['no']), len(event['maybe']))
-
-    row_list = map(None, event['yes'], event['no'], event['maybe'])
-
-    for row in row_list:
-      confirmation_table += '{}|{}|{}\n'.format(
-        '' if row[0] is None else users.convert_email_to_pingable_name(row[0]),
-        '' if row[1] is None else users.convert_email_to_pingable_name(row[1]),
-        '' if row[2] is None else users.convert_email_to_pingable_name(row[2])
-      )
+    if api_response['anonymize_participants']:
+      attendees = "Participants are hidden for this event."
     else:
-      confirmation_table += '\t|\t'
+      attendees = '**Attendees**\n'
+      zulip_ids = [p['person']['zulip_id'] for p in api_response['participants']]
+      for name in zulip_util.get_names(zulip_ids):
+        attendees += name + '\n'
 
-    body = summary_table + '\n\n' + confirmation_table
+    body = summary_table + '\n\n' + attendees
     return RSVPCommandResponse(events, RSVPMessage('stream', body))
 
 

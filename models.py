@@ -37,9 +37,10 @@ class Event(db.Model):
         db.session.add(self)
         db.session.commit()
 
-    def refresh_from_api(self):
-        c = rc.Client()
-        self.update(**event_dict(c.get_event(self.recurse_id)))
+    def refresh_from_api(self, include_participants=False):
+        data = rc.get_event(self.recurse_id, include_participants=include_participants)
+        self.update(**event_dict(data))
+        return data
 
     def already_initialized(self):
         return bool(self.stream or self.subject)

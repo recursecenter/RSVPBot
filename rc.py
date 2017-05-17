@@ -11,8 +11,8 @@ class Client:
         self.secret = secret
         self.api_root = api_root
 
-    def get_event(self, id):
-        r = self.get("events/{}".format(id))
+    def get_event(self, id, include_participants=False):
+        r = self.get("events/{}".format(id), params={'include_participants': include_participants})
 
         if r.status_code == 404:
             return None
@@ -45,8 +45,8 @@ class Client:
 
         return requests.get(url, params=params, auth=auth)
 
-def get_event(id):
-    return Client().get_event(id)
+def get_event(id, **kwargs):
+    return Client().get_event(id, **kwargs)
 
 def get_events(created_at_or_after):
     return Client().get_events(created_at_or_after)
