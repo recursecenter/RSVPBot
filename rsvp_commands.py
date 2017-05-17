@@ -152,7 +152,7 @@ class RSVPHelpCommand(RSVPCommand):
 
   def run(self,  *args, **kwargs):
     sender_email = kwargs.pop('sender_email')
-    return RSVPCommandResponse( RSVPMessage('private', self.commands_table, sender_email))
+    return RSVPCommandResponse(RSVPMessage('private', self.commands_table, sender_email))
 
 
 class RSVPMoveCommand(RSVPEventNeededCommand):
@@ -318,15 +318,13 @@ class RSVPPingCommand(RSVPEventNeededCommand):
     return RSVPCommandResponse(RSVPMessage('stream', body))
 
 
-class RSVPCreditsCommand(RSVPEventNeededCommand):
+class RSVPCreditsCommand(RSVPCommand):
   regex = r'credits$'
 
   def run(self, *args, **kwargs):
     sender_email = kwargs.pop('sender_email')
 
     contributors = [
-      "David Albert",
-      "Zach Allaun (S'12)",
       "Mudit Ameta (SP2'15)",
       "Diego Berrocal (F2'15)",
       "Shad William Hopson (F1'15)",
@@ -341,7 +339,9 @@ class RSVPCreditsCommand(RSVPEventNeededCommand):
       "Alex Wilson (S1'16)",
       "Jérémie Jost (S1'16)",
       "Amulya Reddy (S1'16)",
-      "James J. Porter (S'13)",
+      "James J. Porter (Faculty, S'13)",
+      "Zach Allaun (Faculty, S'12)",
+      "David Albert (Faculty)",
     ]
 
     testers = ["Nikki Bee (SP2'15)", "Anthony Burdi (SP1'15)", "Noella D'sa (SP2'15)", "Mudit Ameta (SP2'15)"]

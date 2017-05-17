@@ -47,3 +47,4 @@ ERROR_GOOGLE_CALENDAR_NO_LONGER_USED = "Oops! RSVPBot no longer uses Google Cale
 ERROR_FUNCTIONALITY_MOVED = "Oops! RSVPBot doesn't support `rsvp {}` directly anymore. You can now do this [on the RC calendar]({})!"
 ERROR_RSVP_MAYBE_NOT_SUPPORTED = "Oops! `rsvp maybe` is no longer supported."
 ERROR_CANNOT_INIT_IN_ANNOUNCE_THREAD = "Oops! You cannot `rsvp init` in the announce thread."
+ERROR_SERVER_EXCEPTION = ":scream: Something went terribly wrong inside RSVPBot. If this keeps happening, please ping `@Faculty`!"

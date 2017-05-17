@@ -1,9 +1,10 @@
 from __future__ import with_statement
 import re
 import json
+import traceback
 
 import rsvp_commands
-from strings import ERROR_INVALID_COMMAND
+import strings
 
 
 class RSVP(object):
@@ -92,13 +93,17 @@ class RSVP(object):
           if matches.groupdict():
             kwargs.update(matches.groupdict())
 
-          response = command.execute(**kwargs)
+          try:
+            response = command.execute(**kwargs)
+          except Exception:
+            print(traceback.format_exc())
+            response = rsvp_commands.RSVPCommandResponse(rsvp_commands.RSVPMessage("stream", strings.ERROR_SERVER_EXCEPTION))
 
           # if it has multiple messages to send, then return that instead of
           # the pair
           return response.messages
 
-      return [rsvp_commands.RSVPMessage('private', ERROR_INVALID_COMMAND % (content), message['sender_email'])]
+      return [rsvp_commands.RSVPMessage('private', strings.ERROR_INVALID_COMMAND % (content), message['sender_email'])]
     return [rsvp_commands.RSVPMessage('private', None)]
 
 
