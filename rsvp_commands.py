@@ -70,7 +70,7 @@ class RSVPEventNeededCommand(RSVPCommand):
   def execute(self, events, *args, **kwargs):
     stream = kwargs.get('stream')
     subject = kwargs.get('subject')
-    event = Event.query.filter(Event.stream == stream and Event.subject == subject).first()
+    event = Event.query.filter(Event.stream == stream).filter(Event.subject == subject).first()
 
     if event:
       event.refresh_from_api()
@@ -107,6 +107,9 @@ class RSVPInitCommand(RSVPCommand):
     sender_email = kwargs.pop('sender_email')
     rc_id_or_url = kwargs.pop('rc_id_or_url')
     rc_event_id = extract_id(rc_id_or_url)
+
+    if Event.query.filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
+      return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_ALREADY_AN_EVENT, sender_email))
 
     if not rc_event_id:
       return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NO_EVENT_ID, sender_email))
@@ -155,52 +158,25 @@ class RSVPMoveCommand(RSVPEventNeededCommand):
   regex = r'move (?P<destination>.+)$'
 
   def run(self, events, *args, **kwargs):
-    event_id = kwargs.pop('event_id')
     sender_id = kwargs.pop('sender_id')
     event = kwargs.pop('event')
-    destination = kwargs.pop('destination')
+    destination = kwargs.pop('destination').strip()
     success_msg = None
 
-    # Check if the issuer of this command is the event's original creator.
-    # Only she can modify the event.
-    creator = event['creator']
-
-    # check and make sure a valid Zulip stream/topic URL is passed
     if not destination:
       body = strings.ERROR_MISSING_MOVE_DESTINATION
-    elif creator != sender_id:
-      body = strings.ERROR_NOT_AUTHORIZED_TO_DELETE
     else:
-      # split URL into components
-      stream, topic = util.narrow_url_to_stream_topic(destination)
+      stream, subject = util.narrow_url_to_stream_topic(destination)
+      destination_name = "#{} > {}".format(stream, subject)
 
-      if stream is None or topic is None:
+      if stream is None or subject is None:
         body = strings.ERROR_BAD_MOVE_DESTINATION % destination
+      elif Event.query.filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
+        body = strings.ERROR_MOVE_ALREADY_AN_EVENT % destination_name
       else:
-        new_event_id = stream + "/" + topic
-
-        if new_event_id in events:
-          body = strings.ERROR_MOVE_ALREADY_AN_EVENT % new_event_id
-        else:
-          body = strings.MSG_EVENT_MOVED % (new_event_id, destination)
-
-          old_event = events.pop(event_id)
-
-          # need to make sure that there's no duplicate here!
-          # also, ideally we'd make sure the stream/topic existed & create it if not.
-          # AND send an 'init' notification to that new stream/toipic. Hm. what's the
-          # best way to do that? Allow for a parameterized init? It's always a reply, not a push.
-          # Can we return MULTIPLE messages instead of just one?
-
-          old_event.update({'name': topic})
-
-          events.update(
-            {
-              new_event_id: old_event
-            }
-          )
-
-          success_msg = RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL, stream, topic)
+        event.update(stream=stream, subject=subject)
+        body = strings.MSG_EVENT_MOVED % (destination_name, destination)
+        success_msg = RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL, stream, subject)
 
     return RSVPCommandResponse(events, RSVPMessage('stream', body), success_msg)
 
