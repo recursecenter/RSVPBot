@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import traceback
 import time
+import sys
 
 import pytz
 
@@ -62,12 +63,16 @@ def update_tracked_events():
 
         Session.commit()
 
-def run_poller():
-    while True:
+def run_poller(running):
+    while running.value:
         try:
             fetch_and_insert_new_events()
             update_tracked_events()
-        except BaseException:
+        except Exception:
             print(traceback.format_exc())
 
         time.sleep(15)
+
+    print("Quitting poller")
+    sys.exit()
+
