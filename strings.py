@@ -1,4 +1,4 @@
-MSG_INIT_SUCCESSFUL = 'This thread is now an RSVPBot event! Type `rsvp help` for more options.'
+MSG_INIT_SUCCESSFUL = 'This thread is now an RSVPBot event for **[{}]({})**! Type `rsvp help` for more options.'
 MSG_DATE_SET = 'The date for **%s** has been set to **%s**!\n`rsvp help` for more options.'
 MSG_TIME_SET = 'The time for **%s** has been set to **%02d:%02d**!.\n`rsvp help` for more options.'
 MSG_DURATION_SET = 'The duration for **%s** has been set to **%s**!.\n`rsvp help` for more options.'

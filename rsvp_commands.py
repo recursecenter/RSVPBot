@@ -136,7 +136,7 @@ class RSVPInitCommand(RSVPCommand):
 
     event.update(stream=stream, subject=subject)
 
-    return RSVPCommandResponse(RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL))
+    return RSVPCommandResponse(RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url)))
 
 
 class RSVPHelpCommand(RSVPCommand):
@@ -173,7 +173,7 @@ class RSVPMoveCommand(RSVPEventNeededCommand):
       else:
         event.update(stream=stream, subject=subject)
         body = strings.MSG_EVENT_MOVED % (destination_name, destination)
-        success_msg = RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL, stream, subject)
+        success_msg = RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url), stream, subject)
 
     return RSVPCommandResponse(RSVPMessage('stream', body), success_msg)
 
