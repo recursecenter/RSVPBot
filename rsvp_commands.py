@@ -11,7 +11,7 @@ import parsedatetime
 
 import strings
 import util
-from models import Event
+from models import Event, Session
 import rc
 import zulip_util
 import config
@@ -95,7 +95,7 @@ class RSVPEventNeededCommand(RSVPCommand):
   def execute(self, *args, **kwargs):
     stream = kwargs.get('stream')
     subject = kwargs.get('subject')
-    event = Event.query.filter(Event.stream == stream).filter(Event.subject == subject).first()
+    event = Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).first()
 
     if event:
       api_response = event.refresh_from_api(self.include_participants)
@@ -117,13 +117,13 @@ class RSVPInitCommand(RSVPCommand):
     if stream == config.rsvpbot_stream and subject == config.rsvpbot_announce_subject:
       return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_CANNOT_INIT_IN_ANNOUNCE_THREAD))
 
-    if Event.query.filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
+    if Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
       return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_ALREADY_AN_EVENT, sender_email))
 
     if not rc_event_id:
       return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_NO_EVENT_ID, sender_email))
 
-    event = Event.query.filter(Event.recurse_id == rc_event_id).first()
+    event = Session.query(Event).filter(Event.recurse_id == rc_event_id).first()
 
     if event is None:
       event_dict = rc.get_event(rc_event_id)
@@ -172,7 +172,7 @@ class RSVPMoveCommand(RSVPEventNeededCommand):
 
       if stream is None or subject is None:
         body = strings.ERROR_BAD_MOVE_DESTINATION % destination
-      elif Event.query.filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
+      elif Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
         body = strings.ERROR_MOVE_ALREADY_AN_EVENT % destination_name
       else:
         event.update(stream=stream, subject=subject)

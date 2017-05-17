@@ -6,7 +6,7 @@ import pytz
 
 import rc
 import models
-from models import db, Event, make_event, parse_time
+from models import Event, make_event, parse_time, Session
 
 def utcnow():
     return datetime.utcnow().replace(tzinfo=pytz.utc)
@@ -25,12 +25,12 @@ def remove_known_events(events):
         return []
 
     ids = [e['id'] for e in events]
-    known_events = Event.query.filter(Event.recurse_id.in_(ids)).all()
+    known_events = Session.query(Event).filter(Event.recurse_id.in_(ids)).all()
 
     return [e for e in events if event_not_in(known_events, e)]
 
 def fetch_new_events():
-    oldest_event = Event.query.order_by(Event.created_at.desc()).first()
+    oldest_event = Session.query(Event).order_by(Event.created_at.desc()).first()
 
     if oldest_event is not None:
         created_at = oldest_event.created_at
@@ -46,11 +46,11 @@ def fetch_and_insert_new_events():
     events = fetch_new_events()
     if events:
         records = [make_event(e) for e in events]
-        db.session.add_all(records)
-        db.session.commit()
+        Session.add_all(records)
+        Session.commit()
 
 def update_tracked_events():
-    tracked = Event.query.filter(Event.stream != None).filter(Event.subject != None).filter(Event.start_time >= utcnow()).all()
+    tracked = Session.query(Event).filter(Event.stream != None).filter(Event.subject != None).filter(Event.start_time >= utcnow()).all()
     ids = [event.recurse_id for event in tracked]
     by_id = {event.recurse_id: event for event in tracked}
 
@@ -58,9 +58,9 @@ def update_tracked_events():
         for api_data in rc.get_events(ids=ids):
             event = by_id[api_data['id']]
             models.assign_attributes(event, models.event_dict(api_data))
-            db.session.add(event)
+            Session.add(event)
 
-        db.session.commit()
+        Session.commit()
 
 def run_poller():
     while True:

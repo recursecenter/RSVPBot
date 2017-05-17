@@ -6,6 +6,7 @@ import rsvp
 import config
 import zulip_util
 
+import models
 
 class Bot():
     """ bot takes a zulip username and api key, a word or phrase to respond to, a search string for giphy,

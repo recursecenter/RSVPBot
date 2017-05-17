@@ -11,31 +11,44 @@ from flask_migrate import Migrate
 import zulip_util
 import rc
 
+
+from sqlalchemy import create_engine, Column, Integer, String, TIMESTAMP
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.inspection import inspect
+
+engine = create_engine(environ['DATABASE_URL'], echo=True)
+Base = declarative_base()
+
+session_factory = sessionmaker(bind=engine)
+Session = scoped_session(session_factory)
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = environ['DATABASE_URL']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = True
 
-# TODO thread safety, we're using db & db.session on both threads
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-class Event(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    recurse_id = db.Column(db.Integer, unique=True)
-    created_at = db.Column(db.TIMESTAMP(timezone=True))
-    created_by = db.Column(db.String)
-    url = db.Column(db.String)
-    start_time = db.Column(db.TIMESTAMP(timezone=True))
-    end_time = db.Column(db.TIMESTAMP(timezone=True))
-    title = db.Column(db.String)
-    stream = db.Column(db.String)
-    subject = db.Column(db.String)
+class Event(Base):
+    __tablename__ = 'event'
+
+    id = Column(Integer, primary_key=True)
+    recurse_id = Column(Integer, unique=True)
+    created_at = Column(TIMESTAMP(timezone=True))
+    created_by = Column(String)
+    url = Column(String)
+    start_time = Column(TIMESTAMP(timezone=True))
+    end_time = Column(TIMESTAMP(timezone=True))
+    title = Column(String)
+    stream = Column(String)
+    subject = Column(String)
 
     def update(self, **updates):
         assign_attributes(self, updates)
-        db.session.add(self)
-        db.session.commit()
+        Session.add(self)
+        Session.commit()
 
     def refresh_from_api(self, include_participants=False):
         data = rc.get_event(self.recurse_id, include_participants=include_participants)
@@ -107,9 +120,8 @@ def make_event(e):
 
 def insert_event(e):
     event = make_event(e)
-    # TODO: session is probably not threadsafe
-    db.session.add(event)
-    db.session.commit()
+    Session.add(event)
+    Session.commit()
     return event
 
 def parse_time(event, attr, utc=False):
@@ -120,7 +132,7 @@ def parse_time(event, attr, utc=False):
     return dateutil.parser.parse(event[attr]).astimezone(tz)
 
 def get_changes(obj):
-    state = db.inspect(obj)
+    state = inspect(obj)
     changes = {}
 
     for attr in state.attrs:
