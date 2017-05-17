@@ -4,32 +4,20 @@ from os import environ
 import dateutil.parser
 import pytz
 import sqlalchemy
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-
-import zulip_util
-import rc
-
 
 from sqlalchemy import create_engine, Column, Integer, String, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.inspection import inspect
 
+import zulip_util
+import rc
+
 engine = create_engine(environ['DATABASE_URL'], echo=True)
 Base = declarative_base()
 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
-
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = environ['DATABASE_URL']
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = True
-
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
 class Event(Base):
     __tablename__ = 'event'
