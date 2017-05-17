@@ -3,7 +3,6 @@ import os
 import zulip
 
 import rsvp
-import zulip_users
 import config
 
 
@@ -42,9 +41,7 @@ class Bot():
         self.client.add_subscriptions(self.streams)
 
     def process(self, event):
-        if event['type'] == 'realm_user':
-            zulip_users.update_zulip_user_dict(event['person'], self.client)
-        elif event['type'] == 'message':
+        if event['type'] == 'message':
             self.respond(event['message'])
 
     def respond(self, message):

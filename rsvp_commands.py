@@ -12,7 +12,6 @@ import parsedatetime
 import calendar_events
 import strings
 import util
-from zulip_users import ZulipUsers
 from models import Event
 import rc
 import zulip_util

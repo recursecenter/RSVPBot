@@ -8,7 +8,6 @@ from mock import Mock, patch
 import calendar_events
 import rsvp
 import rsvp_commands
-from zulip_users import ZulipUsers
 
 
 class CalendarEventTest(unittest.TestCase):
@@ -740,10 +739,6 @@ class RSVPPingTest(RSVPTest):
 
         users_dict = {email: name for (_, name, email) in users}
 
-        # no actual zulip_client in tests, so we have to mock the response
-        return_val = ZulipUsers('test_users_file.json')
-        return_val.zulip_users = users_dict
-
         with patch.object(rsvp_commands.RSVPPingCommand,
                           'get_users_dict',
                           return_value=return_val):
@@ -772,9 +767,6 @@ class RSVPPingTest(RSVPTest):
 
         users_dict = {'a@example.com': 'A'}
 
-        return_val = ZulipUsers('test_users_file.json')
-        return_val.zulip_users = users_dict
-
         with patch.object(rsvp_commands.RSVPPingCommand,
                           'get_users_dict',
                           return_value=return_val):
@@ -787,9 +779,6 @@ class RSVPPingTest(RSVPTest):
     def test_rsvp_ping_with_yes(self):
         self.issue_custom_command('rsvp yes', sender_full_name='B', sender_email='b@example.com')
         users_dict = {'b@example.com': 'B'}
-
-        return_val = ZulipUsers('test_users_file.json')
-        return_val.zulip_users = users_dict
 
         with patch.object(rsvp_commands.RSVPPingCommand,
                           'get_users_dict',
