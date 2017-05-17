@@ -33,4 +33,21 @@ def get_names(ids):
     name_mapping = {user['user_id']: user['full_name'] for user in all_users}
     return [name_mapping[id] for id in ids]
 
+
+def send_message(msg, client=None):
+    """Sends a message to zulip stream or user."""
+    if client is None:
+        client = make_client()
+
+    msg_to = msg['display_recipient']
+    if msg['type'] == 'private':
+        msg_to = msg.get('sender_email') or msg_to
+
+    client.send_message({
+        "type": msg['type'],
+        "subject": msg["subject"],
+        "to": msg_to,
+        "content": msg['body']
+    })
+
 stream_topic_to_narrow_url = util.stream_topic_to_narrow_url

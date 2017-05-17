@@ -4,8 +4,9 @@ import time
 
 import pytz
 
-from models import db, Event, make_event, parse_time
 import rc
+import models
+from models import db, Event, make_event, parse_time
 
 def utcnow():
     return datetime.utcnow().replace(tzinfo=pytz.utc)
@@ -37,7 +38,7 @@ def fetch_new_events():
         created_at = utcnow() - timedelta(days=60)
 
     now = utcnow()
-    future_events = [e for e in rc.get_events(created_at) if parse_time(e, 'start_time') > now]
+    future_events = [e for e in rc.get_events(created_at_or_after=created_at) if parse_time(e, 'start_time') > now]
 
     return remove_known_events(future_events)
 
@@ -49,11 +50,17 @@ def fetch_and_insert_new_events():
         db.session.commit()
 
 def update_tracked_events():
-    # 2. update existing events
-    # get all IDs we're tracking
-    # fetch those events from RC API
-    # update them in DB
-    pass
+    tracked = Event.query.filter(Event.stream != None).filter(Event.subject != None).filter(Event.start_time >= utcnow()).all()
+    ids = [event.recurse_id for event in tracked]
+    by_id = {event.recurse_id: event for event in tracked}
+
+    if ids:
+        for api_data in rc.get_events(ids=ids):
+            event = by_id[api_data['id']]
+            models.assign_attributes(event, models.event_dict(api_data))
+            db.session.add(event)
+
+        db.session.commit()
 
 def run_poller():
     while True:

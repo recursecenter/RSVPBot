@@ -65,6 +65,27 @@ class Event(db.Model):
 def announce_on_zulip(mapper, conn, event):
     zulip_util.announce_event(event)
 
+@sqlalchemy.event.listens_for(Event, 'after_update')
+def post_changes_to_zulip(mapper, conn, event):
+    messages = []
+
+    if event.already_initialized():
+        changes = get_changes(event)
+
+        if 'title' in changes:
+            messages.append("The title has changed: " + event.title)
+
+        if 'start_time' in changes or 'end_time' in changes:
+            messages.append("The time has changed: " + event.timestamp())
+
+    if messages:
+        zulip_util.send_message({
+            "type": "stream",
+            "display_recipient": event.stream,
+            "subject": event.subject,
+            "body": "**This event has changed!**\n" + "\n".join(messages)
+        })
+
 def assign_attributes(model, attributes):
     for k, v in attributes.items():
         setattr(model, k, v)
@@ -97,3 +118,15 @@ def parse_time(event, attr, utc=False):
     else:
         tz = pytz.timezone(event['timezone'])
     return dateutil.parser.parse(event[attr]).astimezone(tz)
+
+def get_changes(obj):
+    state = db.inspect(obj)
+    changes = {}
+
+    for attr in state.attrs:
+        history = state.get_history(attr.key, True)
+        if history.has_changes():
+            changes[attr.key] = history.added
+
+    return changes
+

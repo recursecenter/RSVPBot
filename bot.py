@@ -4,6 +4,7 @@ import zulip
 
 import rsvp
 import config
+import zulip_util
 
 
 class Bot():
@@ -51,20 +52,7 @@ class Bot():
 
         for reply in replies:
             if reply:
-                self.send_message(reply)
-
-    def send_message(self, msg):
-        """Sends a message to zulip stream or user."""
-        msg_to = msg['display_recipient']
-        if msg['type'] == 'private':
-            msg_to = msg.get('sender_email') or msg_to
-
-        self.client.send_message({
-            "type": msg['type'],
-            "subject": msg["subject"],
-            "to": msg_to,
-            "content": msg['body']
-        })
+                zulip_util.send_message(reply, self.client)
 
     def main(self):
         """Blocking call that runs forever. Calls self.respond() on every event received."""

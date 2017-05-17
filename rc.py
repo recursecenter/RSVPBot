@@ -1,4 +1,5 @@
 import requests
+import json
 
 import config
 
@@ -19,8 +20,16 @@ class Client:
 
         return r.json()
 
-    def get_events(self, created_at_or_after):
-        return self.get('events', params={'created_at_or_after': created_at_or_after.isoformat()}).json()
+    def get_events(self, created_at_or_after=None, ids=None):
+        params = {}
+
+        if created_at_or_after:
+            params['created_at_or_after'] = created_at_or_after.isoformat()
+
+        if ids:
+            params['ids'] = json.dumps(ids)
+
+        return self.get('events', params=params).json()
 
     def join(self, event_id, zulip_id):
         return self.post_as_user('events/{}/join'.format(event_id), zulip_id).json()
@@ -48,8 +57,8 @@ class Client:
 def get_event(id, **kwargs):
     return Client().get_event(id, **kwargs)
 
-def get_events(created_at_or_after):
-    return Client().get_events(created_at_or_after)
+def get_events(**kwargs):
+    return Client().get_events(**kwargs)
 
 def join(event_id, zulip_id):
     return Client().join(event_id, zulip_id)
