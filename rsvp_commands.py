@@ -331,6 +331,8 @@ class RSVPCreditsCommand(RSVPEventNeededCommand):
     sender_email = kwargs.pop('sender_email')
 
     contributors = [
+      "David Albert",
+      "Zach Allaun (S'12)",
       "Mudit Ameta (SP2'15)",
       "Diego Berrocal (F2'15)",
       "Shad William Hopson (F1'15)",
@@ -357,7 +359,7 @@ class RSVPCreditsCommand(RSVPEventNeededCommand):
     body += "\n\n and invaluable test feedback from:\n\n"
     body += '\n '.join(testers)
 
-    body += "\n\nThe code for **RSVPBot** is available at https://github.com/kokeshii/RSVPBot"
+    body += "\n\nThe code for this fork of **RSVPBot** can be found at https://github.com/recursecenter/RSVPBot.\n\nThe code for the original **RSVPBot** can be found at https://github.com/kokeshii/RSVPBot."
 
     return RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
 
