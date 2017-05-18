@@ -34,13 +34,21 @@ class Event(Base):
     subject = Column(String)
 
     def update(self, **updates):
+        print("--------start update")
         assign_attributes(self, updates)
+        print("---------after assign")
         Session.add(self)
+        print("---------after add")
         Session.commit()
+        print("----------after commit")
 
     def refresh_from_api(self, include_participants=False):
         data = rc.get_event(self.recurse_id, include_participants=include_participants)
-        self.update(**event_dict(data))
+        print("-------------after rc.get_event")
+        event_data = event_dict(data)
+        print("------------after event_dict")
+        self.update(**event_data)
+        print("-------------after update")
         return data
 
     def already_initialized(self):
@@ -93,6 +101,7 @@ def assign_attributes(model, attributes):
     return model
 
 def event_dict(e):
+    print('-----------getting closer...')
     return {
         "recurse_id": e['id'],
         "created_at": parse_time(e, 'created_at', utc=True),

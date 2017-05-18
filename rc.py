@@ -13,6 +13,7 @@ class Client:
         self.api_root = api_root
 
     def get_event(self, id, include_participants=False):
+        print('--------------real get_event')
         r = self.get("events/{}".format(id), params={'include_participants': include_participants})
 
         if r.status_code == 404:
@@ -21,6 +22,7 @@ class Client:
         return r.json()
 
     def get_events(self, created_at_or_after=None, ids=None):
+        print('--------------real get_events')
         params = {}
 
         if created_at_or_after:
@@ -32,9 +34,11 @@ class Client:
         return self.get('events', params=params).json()
 
     def join(self, event_id, zulip_id):
+        print('--------------real join')
         return self.post_as_user('events/{}/join'.format(event_id), zulip_id).json()
 
     def leave(self, event_id, zulip_id):
+        print('--------------real leave')
         return self.post_as_user('events/{}/leave'.format(event_id), zulip_id).json()
 
     def post_as_user(self, path, zulip_id):

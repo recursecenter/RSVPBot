@@ -8,7 +8,7 @@ import urllib.parse
 
 import strings
 import util
-from models import Event, Session
+from models import Event, Session, insert_event
 import rc
 import zulip_util
 import config
@@ -120,17 +120,23 @@ class RSVPInitCommand(RSVPCommand):
     if not rc_event_id:
       return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_NO_EVENT_ID, sender_email))
 
+    print('-------before query')
     event = Session.query(Event).filter(Event.recurse_id == rc_event_id).first()
+    print('-------after query')
 
     if event is None:
+      print('----------before get event')
       event_dict = rc.get_event(rc_event_id)
+      print('----------after get event')
 
       if event_dict is None:
         return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_EVENT_NOT_FOUND.format(rc_id_or_url), sender_email))
 
       event = insert_event(event_dict)
     else:
+      print('----------before refresh_from_api')
       event.refresh_from_api()
+      print('----------after refresh_from_api')
 
     if event.already_initialized():
       return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_EVENT_ALREADY_INITIALIZED.format(event.zulip_link())))

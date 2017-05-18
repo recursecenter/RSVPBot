@@ -41,7 +41,9 @@ class RSVP(object):
     """Processes the received message and returns a new message, to send back to the user."""
 
     # adding handling of mulitples, dammit.
+    print("----------before route")
     replies = self.route(message)
+    print("----------after route")
     messages = []
 
     for reply in replies:
@@ -94,7 +96,9 @@ class RSVP(object):
             kwargs.update(matches.groupdict())
 
           try:
+            print('------------before command.execute')
             response = command.execute(**kwargs)
+            print('------------after command.execute')
           except Exception:
             print(traceback.format_exc())
             response = rsvp_commands.RSVPCommandResponse(rsvp_commands.RSVPMessage("stream", strings.ERROR_SERVER_EXCEPTION))
