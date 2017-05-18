@@ -38,11 +38,14 @@ RC_API_ROOT=http://localhost:4000/api/v1
 ### One-time setup
 
 ```
-createdb rsvpbot
-
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+createdb rsvpbot
+
+# Runs migrations. See `alembic help` for more info.
+heroku local:run alembic upgrade head
 ```
 
 ### Running the code
@@ -75,5 +78,5 @@ To get around this problem, we will be building a "dev server" that you can run 
 `rsvp help`|Shows this handy table.
 `rsvp ping`|Pings everyone that has RSVP'd so far.
 `rsvp summary`|Displays a summary of this event, including the description, and list of attendees.
-`rsvp move <destination_url>`|Moves this event to another stream/topic. Requires full URL for the destination (e.g.'https://zulip.com/#narrow/stream/announce/topic/All.20Hands.20Meeting') (can only be called by the caller of `rsvp init`)
+`rsvp move <destination_url>`|Moves this event to another stream/topic. Requires full URL for the destination (e.g.'https://zulip.com/#narrow/stream/announce/topic/All.20Hands.20Meeting')
 `rsvp credits`|Lists all the awesome people that made RSVPBot a reality.
