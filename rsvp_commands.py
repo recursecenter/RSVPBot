@@ -4,14 +4,38 @@ import re
 import datetime
 from time import mktime
 import random
+import urllib.parse
 
-from pytimeparse.timeparse import timeparse
-import parsedatetime
-
-import calendar_events
 import strings
 import util
-from zulip_users import ZulipUsers
+from models import Event, Session, insert_event
+import rc
+import zulip_util
+import config
+
+
+def zulip_names_from_participants(participants):
+  zulip_ids = [p['person']['zulip_id'] for p in participants]
+  return zulip_util.get_names(zulip_ids)
+
+def extract_id(id_or_url):
+  try:
+    return int(id_or_url)
+  except ValueError:
+    pass
+
+  uri = urllib.parse.urlparse(id_or_url)
+
+  if uri.scheme not in ['http', 'https']:
+    return None
+
+  id_component = uri.path.split('/')[-1]
+  id_match = re.search(r"\d+", id_component)
+
+  if id_match:
+    return int(id_match[0])
+  else:
+    return None
 
 
 class RSVPMessage(object):
@@ -37,8 +61,7 @@ class RSVPMessage(object):
 
 
 class RSVPCommandResponse(object):
-  def __init__(self, events, *args):
-    self.events = events
+  def __init__(self, *args):
     self.messages = []
     for arg in args:
       if isinstance(arg, RSVPMessage):
@@ -57,107 +80,64 @@ class RSVPCommand(object):
   def match(self, input_str):
     return re.match(self.regex, input_str, flags=re.DOTALL | re.I)
 
-  def execute(self, events, *args, **kwargs):
+  def execute(self, *args, **kwargs):
     """execute() is just a convenience wrapper around __run()."""
-    return self.run(events, *args, **kwargs)
+    return self.run(*args, **kwargs)
 
 
 class RSVPEventNeededCommand(RSVPCommand):
   """Base class for a command where an event needs to exist prior to execution."""
-  def execute(self, events, *args, **kwargs):
-    event = kwargs.get('event')
-    sender_email = kwargs.get('sender_email')
+  include_participants = False
+
+  def execute(self, *args, **kwargs):
+    stream = kwargs.get('stream')
+    subject = kwargs.get('subject')
+    event = Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).first()
+
     if event:
-      return self.run(events, *args, **kwargs)
-    return RSVPCommandResponse(events, RSVPMessage('private', strings.ERROR_NOT_AN_EVENT, sender_email))
+      api_response = event.refresh_from_api(self.include_participants)
+      return self.run(*args, **{**kwargs, "event": event, "api_response": api_response})
+    else:
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_NOT_AN_EVENT, kwargs.get('sender_email')))
 
 
 class RSVPInitCommand(RSVPCommand):
-  regex = r'init$'
+  regex = r'init (?P<rc_id_or_url>.+)'
 
-  def run(self, events, *args, **kwargs):
-    sender_id   = kwargs.pop('sender_id')
-    event_id    = kwargs.pop('event_id')
-    subject    = kwargs.pop('subject')
+  def run(self, *args, **kwargs):
+    stream = kwargs.pop('stream')
+    subject = kwargs.pop('subject')
     sender_email = kwargs.pop('sender_email')
+    rc_id_or_url = kwargs.pop('rc_id_or_url')
+    rc_event_id = extract_id(rc_id_or_url)
 
-    body = strings.MSG_INIT_SUCCESSFUL
+    if stream == config.rsvpbot_stream and subject == config.rsvpbot_announce_subject:
+      return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_CANNOT_INIT_IN_ANNOUNCE_THREAD))
 
-    if events.get(event_id):
-      # Event already exists, error message, we can't initialize twice.
-      body = strings.ERROR_ALREADY_AN_EVENT
-      response = RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
+    if Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_ALREADY_AN_EVENT, sender_email))
+
+    if not rc_event_id:
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_NO_EVENT_ID, sender_email))
+
+    event = Session.query(Event).filter(Event.recurse_id == rc_event_id).first()
+
+    if event is None:
+      event_dict = rc.get_event(rc_event_id)
+
+      if event_dict is None:
+        return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_EVENT_NOT_FOUND.format(rc_id_or_url), sender_email))
+
+      event = insert_event(event_dict)
     else:
-      # Update the dictionary with the new event and commit.
-      events.update(
-        {
-          event_id: {
-            'name': subject,
-            'description': None,
-            'place': None,
-            'creator': sender_id,
-            'yes': [sender_email],
-            'no': [],
-            'maybe': [],
-            'time': None,
-            'limit': None,
-            'date': '%s' % datetime.date.today(),
-            'calendar_event': None,
-            'duration': None,
-          }
-        }
-      )
-      response = RSVPCommandResponse(events, RSVPMessage('stream', body))
+      event.refresh_from_api()
 
-    return response
+    if event.already_initialized():
+      return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_EVENT_ALREADY_INITIALIZED.format(event.zulip_link())))
 
+    event.update(stream=stream, subject=subject)
 
-class RSVPSetDurationCommand(RSVPEventNeededCommand):
-  regex = r'set duration (?P<duration>.+)$'
-
-  def run(self, events, *args, **kwargs):
-    event = kwargs.pop('event')
-    event_id = kwargs.pop('event_id')
-    duration = kwargs.pop('duration')
-    sender_email = kwargs.pop('sender_email')
-
-    parsed_duration_in_seconds = timeparse(duration, granularity='minutes')
-    event['duration'] = parsed_duration_in_seconds
-    body = strings.MSG_DURATION_SET % (event_id, datetime.timedelta(seconds=parsed_duration_in_seconds))
-    calendar_event_id = event.get('calendar_event') and event['calendar_event']['id']
-    if calendar_event_id:
-      try:
-        calendar_events.update_gcal_event(event, event_id)
-      except calendar_events.KeyfilePathNotSpecifiedError:
-        pass
-
-    return RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
-
-
-class RSVPCreateCalendarEventCommand(RSVPEventNeededCommand):
-  regex = r'add to calendar$'
-
-  def run(self, events, *args, **kwargs):
-    event = kwargs.pop('event')
-    event_id = kwargs.pop('event_id')
-
-    try:
-      cal_event = calendar_events.add_rsvpbot_event_to_gcal(event, event_id)
-    except calendar_events.KeyfilePathNotSpecifiedError:
-      body = strings.ERROR_CALENDAR_ENVS_NOT_SET
-    except calendar_events.DateAndTimeNotSuppliedError:
-      body = strings.ERROR_DATE_AND_TIME_NOT_SET
-    except calendar_events.DurationNotSuppliedError:
-      body = strings.ERROR_DURATION_NOT_SET
-    else:
-      event['calendar_event'] = {}
-      event['calendar_event']['id'] = cal_event.get('id')
-      event['calendar_event']['html_link'] = cal_event.get('htmlLink')
-      body = strings.MSG_ADDED_TO_CALENDAR.format(
-          calendar_name=cal_event.get('calendar_name'),
-          url=cal_event.get('htmlLink'))
-
-    return RSVPCommandResponse(events, RSVPMessage('stream', body))
+    return RSVPCommandResponse(RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url)))
 
 
 class RSVPHelpCommand(RSVPCommand):
@@ -167,92 +147,39 @@ class RSVPHelpCommand(RSVPCommand):
       readme_contents = readme_file.read()
       _, commands_table = readme_contents.split("## Commands\n")
 
-  def run(self, events, *args, **kwargs):
+  def run(self,  *args, **kwargs):
     sender_email = kwargs.pop('sender_email')
-    return RSVPCommandResponse(events, RSVPMessage('private', self.commands_table, sender_email))
-
-
-class RSVPCancelCommand(RSVPEventNeededCommand):
-  regex = r'cancel$'
-
-  def run(self, events, *args, **kwargs):
-    event_id = kwargs.pop('event_id')
-    sender_id = kwargs.pop('sender_id')
-    event = kwargs.pop('event')
-
-    # Check if the issuer of this command is the event's original creator.
-    # Only they can delete the event.
-    creator = event['creator']
-
-    if creator == sender_id:
-      body = strings.MSG_EVENT_CANCELED
-      events.pop(event_id)
-    else:
-      body = strings.ERROR_NOT_AUTHORIZED_TO_DELETE
-
-    return RSVPCommandResponse(events, RSVPMessage('stream', body))
+    return RSVPCommandResponse(RSVPMessage('private', self.commands_table, sender_email))
 
 
 class RSVPMoveCommand(RSVPEventNeededCommand):
   regex = r'move (?P<destination>.+)$'
 
-  def run(self, events, *args, **kwargs):
-    event_id = kwargs.pop('event_id')
+  def run(self, *args, **kwargs):
     sender_id = kwargs.pop('sender_id')
     event = kwargs.pop('event')
-    destination = kwargs.pop('destination')
+    destination = kwargs.pop('destination').strip()
     success_msg = None
 
-    # Check if the issuer of this command is the event's original creator.
-    # Only she can modify the event.
-    creator = event['creator']
-
-    # check and make sure a valid Zulip stream/topic URL is passed
     if not destination:
       body = strings.ERROR_MISSING_MOVE_DESTINATION
-    elif creator != sender_id:
-      body = strings.ERROR_NOT_AUTHORIZED_TO_DELETE
     else:
-      # split URL into components
-      stream, topic = util.narrow_url_to_stream_topic(destination)
+      stream, subject = util.narrow_url_to_stream_topic(destination)
+      destination_name = "#{} > {}".format(stream, subject)
 
-      if stream is None or topic is None:
+      if stream is None or subject is None:
         body = strings.ERROR_BAD_MOVE_DESTINATION % destination
+      elif Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
+        body = strings.ERROR_MOVE_ALREADY_AN_EVENT % destination_name
       else:
-        new_event_id = stream + "/" + topic
+        event.update(stream=stream, subject=subject)
+        body = strings.MSG_EVENT_MOVED % (destination_name, destination)
+        success_msg = RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url), stream, subject)
 
-        if new_event_id in events:
-          body = strings.ERROR_MOVE_ALREADY_AN_EVENT % new_event_id
-        else:
-          body = strings.MSG_EVENT_MOVED % (new_event_id, destination)
-
-          old_event = events.pop(event_id)
-
-          # need to make sure that there's no duplicate here!
-          # also, ideally we'd make sure the stream/topic existed & create it if not.
-          # AND send an 'init' notification to that new stream/toipic. Hm. what's the
-          # best way to do that? Allow for a parameterized init? It's always a reply, not a push.
-          # Can we return MULTIPLE messages instead of just one?
-
-          old_event.update({'name': topic})
-
-          events.update(
-            {
-              new_event_id: old_event
-            }
-          )
-
-          success_msg = RSVPMessage('stream', strings.MSG_INIT_SUCCESSFUL, stream, topic)
-
-    return RSVPCommandResponse(events, RSVPMessage('stream', body), success_msg)
-
-
-class LimitReachedException(Exception):
-  pass
+    return RSVPCommandResponse(RSVPMessage('stream', body), success_msg)
 
 
 class RSVPConfirmCommand(RSVPEventNeededCommand):
-
   yes_answers = (
     "ye(s+?)",
     "yea(h+?)",
@@ -292,6 +219,8 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
     "maybe": "You **might** be attending **%s**. It's complicated.",
   }
 
+  check_event = "You're still RSVP'd, but you should [check the event]({}) to make sure you can attend."
+
   funky_yes_prefixes = [
     "GET EXCITED!! ",
     "AWWW YISS!! ",
@@ -308,212 +237,88 @@ class RSVPConfirmCommand(RSVPEventNeededCommand):
     " Oh no!!",
   ]
 
-  def generate_response(self, decision, event_id, funkify=False):
-      response_string = self.responses.get(decision) % event_id
-      if not funkify:
-          return response_string
-      if decision == 'yes':
-        return random.choice(self.funky_yes_prefixes) + response_string
-      elif decision == 'no':
-        return response_string + random.choice(self.funky_no_postfixes)
+  def generate_response(self, decision, event, funkify=False):
+    response_string = self.responses.get(decision) % event.title
+    if not funkify:
       return response_string
+    if decision == 'yes':
+      return random.choice(self.funky_yes_prefixes) + response_string
+    elif decision == 'no':
+      return response_string + random.choice(self.funky_no_postfixes)
+    return response_string
 
-  def confirm(self, event, event_id, sender_email, decision):
-    # Temporary kludge to add a 'maybe' array to legacy events. Can be removed after
-    # all currently logged events have passed.
-    if ('maybe' not in event.keys()):
-      event['maybe'] = []
-
-    # If they're in a different response list, take them out of it.
-    for response in self.responses.keys():
-      # prevent duplicates if replying multiple times
-      if (response == decision):
-        # if they're already in that list, nothing to do
-        if (sender_email not in event[response]):
-          event[response].append(sender_email)
-      # else, remove all instances of them from other response lists.
-      elif sender_email in event[response]:
-        event[response] = [value for value in event[response] if value != sender_email]
-      calendar_event_id = event.get('calendar_event') and event['calendar_event']['id']
-      if calendar_event_id:
-        try:
-          calendar_events.update_gcal_event(event, event_id)
-        except calendar_events.KeyfilePathNotSpecifiedError:
-          pass
-
-    return event
-
-  def attempt_confirm(self, event, event_id, sender_email, decision, limit):
-    if decision == 'yes' and limit:
-      available_seats = limit - len(event['yes'])
-      # In this case, we need to do some extra checking for the attendance limit.
-      if (available_seats - 1 < 0):
-        raise LimitReachedException()
-
-    return self.confirm(event, event_id, sender_email, decision)
-
-  def run(self, events, *args, **kwargs):
-    event_id = kwargs.pop('event_id')
-    event = kwargs.pop('event')
-    yes_decision = kwargs.pop('yes_decision')
-    no_decision = kwargs.pop('no_decision')
-    decision = 'yes' if yes_decision else ('no' if no_decision else 'maybe')
-    sender_name = kwargs.pop('sender_full_name')
-    sender_email = kwargs.pop('sender_email')
-
-    limit = event['limit']
-
-    try:
-      event = self.attempt_confirm(event, event_id,  sender_email, decision, limit)
-
-      # Update the events dict with the new event.
-      events[event_id] = event
-      # 1 in 10 chance of generating a funky response
-      response = self.generate_response(decision, event_id, funkify=(random.random() < 0.1))
-    except LimitReachedException:
-      response = strings.ERROR_LIMIT_REACHED
-    return RSVPCommandResponse(events, RSVPMessage('private', response, sender_email))
-
-
-class RSVPSetLimitCommand(RSVPEventNeededCommand):
-  regex = r'set limit (?P<limit>\d+)$'
-
-  def run(self, events, *args, **kwargs):
-    event = kwargs.pop('event')
-    attendance_limit = int(kwargs.pop('limit'))
-    event['limit'] = attendance_limit
-    return RSVPCommandResponse(events, RSVPMessage('stream', strings.MSG_ATTENDANCE_LIMIT_SET % attendance_limit))
-
-
-class RSVPSetDateCommand(RSVPEventNeededCommand):
-  cal = parsedatetime.Calendar()
-  regex = r'set date (?P<date>.*)$'
-
-  def _is_in_the_future(self, event_date):
-    today = datetime.date.today()
-    return event_date >= today
-
-  def _parse_date(self, raw_date):
-    time_struct, parse_status = self.cal.parse(raw_date)
-    return datetime.date.fromtimestamp(mktime(time_struct))
-
-  def run(self, events, *args, **kwargs):
-    event = kwargs.pop('event')
-    event_id = kwargs.pop('event_id')
-    sender_email = kwargs.pop('sender_email')
-    raw_date = kwargs.pop('date')
-    try:
-      event_date = self._parse_date(raw_date)
-    except ValueError:
-      event_date = None
-
-    if event_date and self._is_in_the_future(event_date):
-      event['date'] = str(event_date)
-      events[event_id] = event
-      body = strings.MSG_DATE_SET % (event_id, event_date.strftime("%x"))
-      calendar_event_id = event.get('calendar_event') and event['calendar_event']['id']
-      if calendar_event_id:
-        try:
-          calendar_events.update_gcal_event(event, event_id)
-        except calendar_events.KeyfilePathNotSpecifiedError:
-          pass
+  def get_decision(self, yes_decision, no_decision, maybe_decision, **kwargs):
+    if yes_decision:
+      return 'yes'
+    elif no_decision:
+      return 'no'
     else:
-      body = strings.ERROR_DATE_NOT_VALID % raw_date
+      return 'maybe'
 
-    return RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
+  def run(self, *args, **kwargs):
+    event = kwargs['event']
+    sender_id = kwargs['sender_id']
+    decision = self.get_decision(**kwargs)
+    funkify = random.random() < 0.1
 
+    if decision == 'maybe':
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_RSVP_MAYBE_NOT_SUPPORTED, kwargs['sender_email']))
+    elif decision == 'yes':
+      result = rc.join(event.recurse_id, sender_id)
 
-class RSVPSetTimeCommand(RSVPEventNeededCommand):
-  regex = r'set time (?P<hours>\d{1,2})\:(?P<minutes>\d{1,2})$'
-
-  def run(self, events, *args, **kwargs):
-    event_id = kwargs.pop('event_id')
-    hours, minutes = int(kwargs.pop('hours')), int(kwargs.pop('minutes'))
-    sender_email = kwargs.pop('sender_email')
-
-    if hours in range(0, 24) and minutes in range(0, 60):
-      event = events[event_id]
-      event['time'] = '%02d:%02d' % (hours, minutes)
-      body = strings.MSG_TIME_SET % (event_id, hours, minutes)
-      calendar_event_id = event.get('calendar_event') and event['calendar_event']['id']
-      if calendar_event_id:
-        try:
-          calendar_events.update_gcal_event(event, event_id)
-        except calendar_events.KeyfilePathNotSpecifiedError:
-          pass
+      if result['joined']:
+        if result['over_capacity'] and result['past_deadline']:
+          response = "This event is over capacity and past the RSVP deadline! " + self.check_event.format(event.url)
+        elif result['over_capacity']:
+          response = "This event is over capacity! " + self.check_event.format(event.url)
+        elif result['past_deadline']:
+          response = "This event is past the RSVP deadline! " + self.check_event.format(event.url)
+        else:
+          response = self.generate_response('yes', event, funkify=funkify)
+      else:
+        if result['event_archived']:
+          response = "Oops! This event has been canceled, so you weren't able to RSVP."
+        elif result['rsvps_disabled']:
+          response = "Oops! RSVPs have been disabled for this event. You may be able to learn more [on the calendar]({}).".format(event.url)
+        else:
+          response = "Oops! Something went wrong. Here are the errors:\n\n" + "\n".join(result['errors'])
     else:
-      body = strings.ERROR_TIME_NOT_VALID % (hours, minutes)
+      rc.leave(event.recurse_id, sender_id)
+      response = self.generate_response('no', event, funkify=funkify)
 
-    return RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
-
-
-class RSVPSetTimeAllDayCommand(RSVPEventNeededCommand):
-  regex = r'set time allday$'
-
-  def run(self, events, *args, **kwargs):
-    event_id = kwargs.pop('event_id')
-    sender_email = kwargs.pop('sender_email')
-    events[event_id]['time'] = None
-    return RSVPCommandResponse(events, RSVPMessage('private', strings.MSG_TIME_SET_ALLDAY % event_id, sender_email))
-
-
-class RSVPSetStringAttributeCommand(RSVPEventNeededCommand):
-  regex = r'set (?P<attribute>(location|place|description)) (?P<value>.+)$'
-
-  def run(self, events, *args, **kwargs):
-    event_id = kwargs.pop('event_id')
-    sender_email = kwargs.pop('sender_email')
-    attribute = kwargs.pop('attribute')
-    if attribute == "location":
-      attribute = "place"
-    value = kwargs.pop('value')
-
-    event = events[event_id]
-    event[attribute] = value
-    calendar_event_id = event.get('calendar_event') and event['calendar_event']['id']
-    if calendar_event_id:
-      try:
-        calendar_events.update_gcal_event(event, event_id)
-      except calendar_events.KeyfilePathNotSpecifiedError:
-        pass
-    body = strings.MSG_STRING_ATTR_SET % (attribute, value)
-    return RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
+    return RSVPCommandResponse(RSVPMessage('private', response, kwargs['sender_email']))
 
 
 class RSVPPingCommand(RSVPEventNeededCommand):
   regex = r'^({key_word} ping)$|({key_word} ping (?P<message>.+))$'
+  include_participants = True
 
   def __init__(self, prefix, *args, **kwargs):
     self.regex = self.regex.format(key_word=prefix)
 
-  def get_users_dict(self):
-    return ZulipUsers()
-
-  def run(self, events, *args, **kwargs):
-    users = self.get_users_dict()
-
-    event = kwargs.pop('event')
+  def run(self, *args, **kwargs):
+    event = kwargs['event']
+    api_response = kwargs['api_response']
     message = kwargs.get('message')
 
-    body = "**Pinging all participants who RSVP'd!!**\n"
+    if api_response['anonymize_participants']:
+      body = "Oops! Attendees are hidden for this event"
+    else:
+      body = "**Pinging all participants who RSVP'd!!**\n"
 
-    for participant in event['yes']:
-      body += "@**%s** " % users.convert_email_to_pingable_name(participant)
+      for name in zulip_names_from_participants(api_response['participants']):
+        body += "@**%s** " % name
 
-    for participant in event['maybe']:
-      body += "@**%s** " % users.convert_email_to_pingable_name(participant)
+      if message:
+        body += '\n' + message
 
-    if message:
-      body += ('\n' + message)
-
-    return RSVPCommandResponse(events, RSVPMessage('stream', body))
+    return RSVPCommandResponse(RSVPMessage('stream', body))
 
 
-class RSVPCreditsCommand(RSVPEventNeededCommand):
+class RSVPCreditsCommand(RSVPCommand):
   regex = r'credits$'
 
-  def run(self, events, *args, **kwargs):
-
+  def run(self, *args, **kwargs):
     sender_email = kwargs.pop('sender_email')
 
     contributors = [
@@ -531,7 +336,9 @@ class RSVPCreditsCommand(RSVPEventNeededCommand):
       "Alex Wilson (S1'16)",
       "Jérémie Jost (S1'16)",
       "Amulya Reddy (S1'16)",
-      "James J. Porter (S'13)",
+      "James J. Porter (Faculty, S'13)",
+      "Zach Allaun (Faculty, S'12)",
+      "David Albert (Faculty)",
     ]
 
     testers = ["Nikki Bee (SP2'15)", "Anthony Burdi (SP1'15)", "Noella D'sa (SP2'15)", "Mudit Ameta (SP2'15)"]
@@ -543,53 +350,99 @@ class RSVPCreditsCommand(RSVPEventNeededCommand):
     body += "\n\n and invaluable test feedback from:\n\n"
     body += '\n '.join(testers)
 
-    body += "\n\nThe code for **RSVPBot** is available at https://github.com/kokeshii/RSVPBot"
+    body += "\n\nThe code for this fork of **RSVPBot** can be found at https://github.com/recursecenter/RSVPBot.\n\nThe code for the original **RSVPBot** can be found at https://github.com/kokeshii/RSVPBot."
 
-    return RSVPCommandResponse(events, RSVPMessage('private', body, sender_email))
+    return RSVPCommandResponse(RSVPMessage('private', body, sender_email))
 
 
 class RSVPSummaryCommand(RSVPEventNeededCommand):
   regex = r'(summary$|status$)'
+  include_participants = True
 
-  def get_users_dict(self):
-    return ZulipUsers()
+  def run(self, *args, **kwargs):
+    event = kwargs['event']
+    api_response = kwargs['api_response']
+    participants = api_response.get('participants')
 
-  def run(self, events, *args, **kwargs):
-    event = kwargs.pop('event')
-    users = self.get_users_dict()
-
-    summary_table = '**%s**' % (event['name'])
+    summary_table = '**%s**' % (event.title)
     summary_table += '\t|\t\n:---:|:---:\n'
 
-    if event['description']:
-        summary_table += '**What**|%s\n' % event['description']
+    if api_response.get('description'):
+      summary_table += '**What**|%s\n' % api_response['description']
 
-    summary_table += '**When**|%s @ %s\n' % (event['date'], event['time'] or '(All day)')
+    summary_table += '**When**|%s\n' % event.timestamp()
 
-    if event['duration']:
-        summary_table += '**Duration**|%s\n' % datetime.timedelta(seconds=event['duration'])
+    if 'location' in api_response:
+      location = api_response['location']
+      location_components = filter(lambda x: x, [location.get('name'), location.get('address'), location.get('city')])
+      summary_table += '**Where**|%s\n' % ', '.join(location_components)
 
-    if event['place']:
-        summary_table += '**Where**|%s\n' % event['place']
+    if api_response.get('rsvp_capacity'):
+      limit_str = '%d/%d spots left' % (api_response['rsvp_capacity'] - api_response['participant_count'], api_response['rsvp_capacity'])
+      summary_table += '**Limit**|%s\n' % limit_str
 
-    if event['limit']:
-        limit_str = '%d/%d spots left' % (event['limit'] - len(event['yes']), event['limit'])
-        summary_table += '**Limit**|%s\n' % limit_str
+    if api_response.get('rsvp_deadline'):
+      deadline = models.parse_time(api_response, 'rsvp_deadline')
+      time = deadline.strftime("%-I:%M%p").lower()
+      zone = deadline.tzinfo.tzname(deadline)
+      date = deadline.strftime("%A, %b %-d, %Y")
+      summary_table += '**Deadline**|%s %s, %s\n' % (time, zone, date)
 
-    confirmation_table = 'YES ({}) |NO ({}) |MAYBE({}) \n:---:|:---:|:---:\n'
-
-    confirmation_table = confirmation_table.format(len(event['yes']), len(event['no']), len(event['maybe']))
-
-    row_list = map(None, event['yes'], event['no'], event['maybe'])
-
-    for row in row_list:
-      confirmation_table += '{}|{}|{}\n'.format(
-        '' if row[0] is None else users.convert_email_to_pingable_name(row[0]),
-        '' if row[1] is None else users.convert_email_to_pingable_name(row[1]),
-        '' if row[2] is None else users.convert_email_to_pingable_name(row[2])
-      )
+    if api_response['anonymize_participants']:
+      attendees = "Participants are hidden for this event."
     else:
-      confirmation_table += '\t|\t'
+      attendees = '**Attendees**\n'
+      for name in zulip_names_from_participants(api_response['participants']):
+        attendees += name + '\n'
 
-    body = summary_table + '\n\n' + confirmation_table
-    return RSVPCommandResponse(events, RSVPMessage('stream', body))
+    body = summary_table + '\n\n' + attendees
+    return RSVPCommandResponse(RSVPMessage('stream', body))
+
+
+
+class RSVPCreateCalendarEventCommand(RSVPEventNeededCommand):
+  regex = r'add to calendar$'
+
+  def run(self, *args, **kwargs):
+    event = kwargs.pop('event')
+    return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_GOOGLE_CALENDAR_NO_LONGER_USED.format(event.url)))
+
+class RSVPFunctionalityMovedCommand(RSVPEventNeededCommand):
+  def run(self, *args, **kwargs):
+    return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_FUNCTIONALITY_MOVED.format(self.name, kwargs['event'].url)))
+
+class RSVPSetLimitCommand(RSVPFunctionalityMovedCommand):
+  regex = r'set limit (?P<limit>\d+)$'
+  name = 'set limit'
+
+class RSVPSetDateCommand(RSVPFunctionalityMovedCommand):
+  regex = r'set date (?P<date>.*)$'
+  name = 'set date'
+
+class RSVPSetTimeCommand(RSVPFunctionalityMovedCommand):
+  regex = r'set time (?P<hours>\d{1,2})\:(?P<minutes>\d{1,2})$'
+  name = 'set time'
+
+class RSVPSetTimeAllDayCommand(RSVPFunctionalityMovedCommand):
+  regex = r'set time allday$'
+  name = 'set time'
+
+class RSVPSetLocationCommand(RSVPFunctionalityMovedCommand):
+  regex = r'set (?P<attribute>location) (?P<value>.+)$'
+  name = 'set location'
+
+class RSVPSetPlaceCommand(RSVPFunctionalityMovedCommand):
+  regex = r'set (?P<attribute>place) (?P<value>.+)$'
+  name = 'set place'
+
+class RSVPSetDescriptionCommand(RSVPFunctionalityMovedCommand):
+  regex = r'set (?P<attribute>description) (?P<value>.+)$'
+  name = 'set description'
+
+class RSVPCancelCommand(RSVPFunctionalityMovedCommand):
+  regex = r'cancel$'
+  name = "cancel"
+
+class RSVPSetDurationCommand(RSVPFunctionalityMovedCommand):
+  regex = r'set duration (?P<duration>.+)$'
+  name = 'set duration'
