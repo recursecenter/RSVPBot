@@ -3,7 +3,7 @@
         "test": {
             "env": {
                 "PYTHONUNBUFFERED": "true",
-                "HEROKU_CI": "true,
+                "HEROKU_CI": "true",
                 "RC_API_ROOT": "https://www.recurse.com/api/v1"
             },
             "scripts": {
