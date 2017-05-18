@@ -10,7 +10,7 @@
                 "test": "python tests.py"
             },
             "addons": [
-                "heroku-postgresql-hobby-dev"
+                "heroku-postgresql:hobby-dev"
             ]
         }
     }
