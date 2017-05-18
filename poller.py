@@ -31,7 +31,7 @@ def remove_known_events(events):
     return [e for e in events if event_not_in(known_events, e)]
 
 def fetch_new_events():
-    oldest_event = Session.query(Event).order_by(Event.created_at.desc()).first()
+    oldest_event = Session.query(Event).order_by(Event._created_at.desc()).first()
 
     if oldest_event is not None:
         created_at = oldest_event.created_at
@@ -51,7 +51,7 @@ def fetch_and_insert_new_events():
         Session.commit()
 
 def update_tracked_events():
-    tracked = Session.query(Event).filter(Event.stream != None).filter(Event.subject != None).filter(Event.start_time >= utcnow()).all()
+    tracked = Session.query(Event).filter(Event.stream != None).filter(Event.subject != None).filter(Event._start_time >= utcnow()).all()
     ids = [event.recurse_id for event in tracked]
     by_id = {event.recurse_id: event for event in tracked}
 

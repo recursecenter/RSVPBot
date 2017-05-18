@@ -24,14 +24,39 @@ class Event(Base):
 
     id = Column(Integer, primary_key=True)
     recurse_id = Column(Integer, unique=True)
-    created_at = Column(TIMESTAMP(timezone=True))
+    _created_at = Column("created_at", TIMESTAMP(timezone=True))
     created_by = Column(String)
     url = Column(String)
-    start_time = Column(TIMESTAMP(timezone=True))
-    end_time = Column(TIMESTAMP(timezone=True))
+    timezone = Column(String)
+    _start_time = Column("start_time", TIMESTAMP(timezone=True))
+    _end_time = Column("end_time", TIMESTAMP(timezone=True))
     title = Column(String)
     stream = Column(String)
     subject = Column(String)
+
+    @property
+    def created_at(self):
+        return self._created_at.astimezone(pytz.utc)
+
+    @created_at.setter
+    def created_at(self, value):
+        self._created_at = value
+
+    @property
+    def start_time(self):
+        return self._start_time.astimezone(pytz.timezone(self.timezone))
+
+    @start_time.setter
+    def start_time(self, value):
+        self._start_time = value
+
+    @property
+    def end_time(self):
+        return self._end_time.astimezone(pytz.timezone(self.timezone))
+
+    @end_time.setter
+    def end_time(self, value):
+        self._end_time = value
 
     def update(self, **updates):
         assign_attributes(self, updates)
@@ -97,6 +122,7 @@ def event_dict(e):
     return {
         "recurse_id": e['id'],
         "created_at": parse_time(e, 'created_at', utc=True),
+        "timezone": e['timezone'],
         "start_time": parse_time(e, 'start_time'),
         "end_time": parse_time(e, 'end_time'),
         "created_by": e['created_by']['name'],
