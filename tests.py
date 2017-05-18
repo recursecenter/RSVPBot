@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import os
 import unittest
 
-from mock import Mock, patch
+import mock from unittest
 
 import rsvp
 import rsvp_commands
