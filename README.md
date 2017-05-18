@@ -1,7 +1,7 @@
 RSVPBot
 =======
 
-This is a Zulip bot that integrates with the [Recurse Center calendar](https://www.recurse.com/calendar). The original version which works independently of the RC calendar and includes Google Calendar integration can be found at kokeshii/RSVPBot.
+This is a Zulip bot that integrates with the [Recurse Center calendar](https://www.recurse.com/calendar). The original version which works independently of the RC calendar and includes Google Calendar integration can be found at [kokeshii/RSVPBot](https://github.com/kokeshii/RSVPBot).
 
 RSVPBot lets you associate a Zulip thread with an RC calendar event, and lets people RSVP to the event directly from Zulip.
 
