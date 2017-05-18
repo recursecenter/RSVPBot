@@ -20,7 +20,7 @@ session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 
 class Event(Base):
-    __tablename__ = 'event'
+    __tablename__ = 'events'
 
     id = Column(Integer, primary_key=True)
     recurse_id = Column(Integer, unique=True)
