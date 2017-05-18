@@ -133,9 +133,12 @@ class RSVPTest(unittest.TestCase):
         return event
 
     def setUp(self):
-        patcher = patch('rc.Client', MockClient)
-        self.addCleanup(patcher.stop)
-        patcher.start()
+        p1 = patch('rc.Client', MockClient)
+        p2 = patch('zulip_util.announce_event')
+        self.addCleanup(p1.stop)
+        self.addCleanup(p2.stop)
+        p1.start()
+        p2.start()
 
         self._events = []
         self.rsvp = rsvp.RSVP('rsvp')
@@ -361,308 +364,40 @@ class RSVPDecisionTest(RSVPTest):
     def test_RSVP_yes_way(self):
         self.general_yes('RSVP yes plz')
 
-@unittest.skip
-class RSVPLimitTest(RSVPTest):
-    def test_set_limit(self):
-        output = self.issue_command('rsvp set limit 1')
-
-        self.assertIn('has been set to **1**', output[0]['body'])
-        self.assertEqual(1, self.event['limit'])
-
-    def test_cannot_rsvp_on_a_full_event(self):
-        self.issue_command('rsvp set limit 1')
-        self.issue_command('rsvp yes')
-        output = self.issue_command('rsvp yes', sender_full_name='Tester 2')
-
-        self.assertIn('The **limit** for this event has been reached!', output[0]['body'])
-
-    def test_limit_actually_works(self):
-        self.issue_command('rsvp set limit 500')
-        self.issue_command('rsvp yes')
-        output = self.issue_command(
-            'rsvp yes',
-            sender_full_name='Sender B',
-            sender_email='b@example.com'
-        )
-
-        self.assertIn('are attending', output[0]['body'])
-        self.assertIn('b@example.com', self.event['yes'])
-        self.assertEqual(498, self.event['limit'] - len(self.event['yes']))
-
-@unittest.skip
-class RSVPDurationTest(RSVPTest):
-    def test_set_duration(self):
-        output = self.issue_command('rsvp set duration 30m')
-
-        self.assertIn(
-            'has been set to **0:30:00**!',
-            output[0]['body']
-        )
-
-@unittest.skip
-class RSVPDateTest(RSVPTest):
-    def test_set_date(self):
-        output = self.issue_command('rsvp set date 02/25/2099')
-
-        self.assertIn(
-            'has been set to **02/25/99**!',
-            output[0]['body']
-        )
-
-        self.assertEqual(
-            '2099-02-25',
-            self.event['date']
-        )
-
-    def test_set_date_parses_human_dates(self):
-        output = self.issue_command('rsvp set date tomorrow')
-
-        tomorrow = date.today() + timedelta(days=1)
-
-        self.assertEqual(
-            str(tomorrow),
-            self.event['date']
-        )
-
-    def test_set_date_prefers_future_when_date_is_ambiguous(self):
-        """
-        When passing an ambiguous weekday we should privilege dates from the
-        future, e.g. if we're on Wednesday and I say `rsvp set date tuesday`
-        then the date should be set to next Tuesday and not yesterday.
-        """
-        next_week_date = date.today() + timedelta(days=6)
-        weekday = next_week_date.strftime("%A")
-
-        output = self.issue_command('rsvp set date %s' % weekday)
-
-
-        self.assertEqual(
-            str(next_week_date),
-            self.event['date']
-        )
-
-    def test_set_past_date(self):
-        output = self.issue_command('rsvp set date 02/25/2000')
-
-        self.assertIn(
-            'Oops! **02/25/2000** is not a valid date in the **future**!',
-            output[0]['body']
-        )
-
-        self.assertNotEqual(
-            '2000-02-25',
-            self.event['date']
-        )
-
-    def test_new_event_is_today(self):
-        today = str(date.today())
-        self.assertEqual(today, self.event['date'])
-
-@unittest.skip
-class RSVPTimeTest(RSVPTest):
-    def test_set_time(self):
-        output = self.issue_command('rsvp set time 10:30')
-
-        self.assertIn('has been set to **10:30**', output[0]['body'])
-        self.assertEqual('10:30', self.event['time'])
-
-    def test_set_time_fail(self):
-        self.issue_command('rsvp init')
-
-        output = self.issue_command('rsvp set time 99:99')
-
-        self.assertIn('is not a valid time', output[0]['body'])
-        self.assertNotEqual('99:99', self.event['time'])
-
-    def test_new_event_is_all_day(self):
-        self.assertEqual(self.event['time'], None)
-
-    def test_set_event_all_day(self):
-        self.issue_command('rsvp set time 10:30')
-        output = self.issue_command('rsvp set time allday')
-        self.assertEqual(self.event['time'], None)
-        self.assertIn('all day long event.', output[0]['body'])
-
-
-@unittest.skip
-class RSVPDescriptionTest(RSVPTest):
-    def test_set_description(self):
-        output = self.issue_command('rsvp set description This is the description of the event!')
-        self.assertEqual(self.event['description'], 'This is the description of the event!')
-        self.assertIn('The description for this event has been set', output[0]['body'])
-        self.assertIn(self.event['description'], output[0]['body'])
-
-    def test_add_description_with_message_including_yeah(self):
-        output = self.issue_command('rsvp set description This is the description of the event! yeah!')
-        self.assertEqual(self.event['description'], 'This is the description of the event! yeah!')
-        self.assertIn('The description for this event has been set', output[0]['body'])
-        self.assertIn(self.event['description'], output[0]['body'])
-
-    def test_rsvp_description_containing_yes(self):
-        output = self.issue_command('rsvp set description lets do this yes!')
-        self.assertEqual(self.event['description'], 'lets do this yes!')
-        self.assertIn('The description for this event has been set', output[0]['body'])
-        self.assertIn(self.event['description'], output[0]['body'])
-        self.assertNotIn('are attending', output[0]['body'])
-
-
-@unittest.skip
-class RSVPPlaceTest(RSVPTest):
-    def test_set_place(self):
-        output = self.issue_command('rsvp set place Hopper!')
-        self.assertEqual(self.event['place'], 'Hopper!')
-        self.assertIn('The place for this event has been set', output[0]['body'])
-        self.assertIn(self.event['place'], output[0]['body'])
-
-    def test_set_location(self):
-        # location should work as an alias for place
-        output = self.issue_command('rsvp set location Hopper!')
-        self.assertEqual(self.event['place'], 'Hopper!')
-        self.assertIn('The place for this event has been set', output[0]['body'])
-        self.assertIn(self.event['place'], output[0]['body'])
-
-
-@unittest.skip
 class RSVPSummaryTest(RSVPTest):
-    def test_summary_shows_duration(self):
-        self.issue_command('rsvp set duration 1h')
+    @patch('zulip_util.get_names', return_value=['Test User'])
+    def test_summary(self, mock_get_names):
         output = self.issue_command('rsvp summary')
-        self.assertIn('**Duration**|1:00:00', output[0]['body'])
+        body = output[0]['body']
 
-    def test_summary_does_not_include_duration_if_duration_not_set(self):
-        output = self.issue_command('rsvp summary')
-        self.assertNotIn('**Duration**', output[0]['body'])
+        self.assertIn(self.event.title, body)
+        self.assertIn(self.event.timestamp(), body)
+        self.assertIn(test_data['location']['name'], body)
+        self.assertIn(test_data['description'], body)
+        self.assertIn('Test User', body)
 
-    def test_summary_shows_place(self):
-        self.issue_command('rsvp set place Hopper!')
-        output = self.issue_command('rsvp summary')
-        self.assertIn('**Where**|Hopper!', output[0]['body'])
-
-    def test_summary_does_not_include_place_if_place_not_set(self):
-        output = self.issue_command('rsvp summary')
-        self.assertNotIn('**Where**', output[0]['body'])
-
-    def test_summary_shows_description(self):
-        self.issue_command('rsvp set description test description')
-        output = self.issue_command('rsvp summary')
-        self.assertIn('**What**|test description', output[0]['body'])
-
-    def test_summary_does_not_include_what_section_if_description_not_set(self):
-        output = self.issue_command('rsvp summary')
-        self.assertNotIn('**What**', output[0]['body'])
-
-    def test_summary_shows_allday_for_allday_event(self):
-        output = self.issue_command('rsvp summary')
-        self.assertIn('(All day)', output[0]['body'])
-
-    def test_summary_shows_date(self):
-        self.issue_command('rsvp set date 02/25/2100')
-        output = self.issue_command('rsvp summary')
-        self.assertIn('**When**|2100-02-25', output[0]['body'])
-
-    def test_summary_shows_limit(self):
-        self.issue_command('rsvp set limit 1')
-        output = self.issue_command('rsvp summary')
-        self.assertIn('**Limit**|0/1', output[0]['body'])
-
-    def test_summary_does_not_shows_limit_if_limit_not_set(self):
-        output = self.issue_command('rsvp summary')
-        self.assertNotIn('**Limit**', output[0]['body'])
-
-    def test_summary_shows_time(self):
-        self.issue_command('rsvp set time 10:30')
-        output = self.issue_command('rsvp summary')
-        self.assertIn('10:30', output[0]['body'])
-
-    def test_summary_shows_thread_name(self):
-        output = self.issue_command('rsvp summary')
-        self.assertIn('Testing', output[0]['body'])
-
-@unittest.skip
+@patch('zulip_util.get_names', return_value=['A', 'B'])
 class RSVPPingTest(RSVPTest):
-    def test_ping_yes(self):
-        users = [
-            ('yes', 'A', 'a@example.com'),
-            ('yes', 'B', 'b@example.com'),
-            ('yes', 'C', 'c@example.com'),
-            ('yes', 'D', 'd@example.com'),
-            ('no', 'E', 'e@example.com'),
-            ('no', 'F', 'f@example.com'),
-            ('no', 'G', 'g@example.com'),
-            ('no', 'H', 'h@example.com'),
-            ('maybe', 'W', 'w@example.com'),
-            ('maybe', 'X', 'x@example.com'),
-            ('maybe', 'Y', 'y@example.com'),
-            ('maybe', 'Z', 'z@example.com'),
-        ]
-        for user in users:
-            command = 'rsvp {response}'.format(response=user[0])
-            sender_full_name = user[1]
-            sender_email = user[2]
-            self.issue_command(
-                command,
-                sender_full_name=sender_full_name,
-                sender_email=sender_email
-            )
+    def test_ping(self, mock_get_names):
+        body = self.issue_command('rsvp ping')[0]['body']
 
-        users_dict = {email: name for (_, name, email) in users}
+        self.assertIn('@**A**', body)
+        self.assertIn('@**B**', body)
 
-        with patch.object(rsvp_commands.RSVPPingCommand,
-                          'get_users_dict',
-                          return_value=return_val):
+    def test_ping_message(self, mock_get_names):
+        body = self.issue_command('rsvp ping message!!!')[0]['body']
 
-            output = self.issue_command('rsvp ping')
+        self.assertIn('@**A**', body)
+        self.assertIn('message!!!', body)
 
-        # yeses
-        self.assertIn('@**A**', output[0]['body'])
-        self.assertIn('@**B**', output[0]['body'])
-        self.assertIn('@**C**', output[0]['body'])
-        self.assertIn('@**D**', output[0]['body'])
+    def test_rsvp_ping_with_yes(self, mock_get_names):
+        body = self.issue_command('rsvp ping we\'re all going to the yes concert')[0]['body']
 
-        # maybes
-        self.assertIn('@**W**', output[0]['body'])
-        self.assertIn('@**X**', output[0]['body'])
-        self.assertIn('@**Y**', output[0]['body'])
-        self.assertIn('@**Z**', output[0]['body'])
-
-        self.assertNotIn('@**E**', output[0]['body'])
-        self.assertNotIn('@**F**', output[0]['body'])
-        self.assertNotIn('@**G**', output[0]['body'])
-        self.assertNotIn('@**H**', output[0]['body'])
-
-    def test_ping_message(self):
-        self.issue_command('rsvp yes', sender_full_name='A', sender_email='a@example.com')
-
-        users_dict = {'a@example.com': 'A'}
-
-        with patch.object(rsvp_commands.RSVPPingCommand,
-                          'get_users_dict',
-                          return_value=return_val):
-
-            output = self.issue_command('rsvp ping message!!!')
-
-        self.assertIn('@**A**', output[0]['body'])
-        self.assertIn('message!!!', output[0]['body'])
-
-    def test_rsvp_ping_with_yes(self):
-        self.issue_command('rsvp yes', sender_full_name='B', sender_email='b@example.com')
-        users_dict = {'b@example.com': 'B'}
-
-        with patch.object(rsvp_commands.RSVPPingCommand,
-                          'get_users_dict',
-                          return_value=return_val):
-            output = self.issue_command('rsvp ping we\'re all going to the yes concert')
-
-        self.assertEqual(None, self.event['limit'])
-        self.assertNotIn('@**Tester** is attending!', output[0]['body'])
-        self.assertNotIn('a@example.com', self.event['no'])
-        self.assertIn('@**B**', output[0]['body'])
-        self.assertIn('we\'re all going to the yes concert', output[0]['body'])
+        self.assertIn('@**B**', body)
+        self.assertIn("we're all going to the yes concert", body)
 
 
-@unittest.skip
 class RSVPHelpTest(RSVPTest):
-
     def test_rsvp_help_generates_markdown_table(self):
         output = self.issue_command('rsvp help')
         header = """
@@ -670,10 +405,6 @@ class RSVPHelpTest(RSVPTest):
 --- | ---
         """.strip()
         self.assertIn(header, output[0]['body'])
-
-    def test_rsvp_help_contains_date_format_section(self):
-        output = self.issue_command('rsvp help')
-        self.assertIn("**Date format**", output[0]['body'])
 
     def test_rsvp_help_contains_help_for_all_commands(self):
         # FIXME: currently enumerating commands manually, which is brittle.
@@ -685,10 +416,6 @@ class RSVPHelpTest(RSVPTest):
             "help",
             "ping",
             "move",
-            "set time",
-            "set date",
-            "set place",
-            "set limit",
             "summary",
             "credits"
         )
@@ -697,91 +424,41 @@ class RSVPHelpTest(RSVPTest):
             self.assertIn("`rsvp %s" % command, output[0]['body'])
 
 
-@unittest.skip
 class RSVPMessageTypesTest(RSVPTest):
     def test_rsvp_private_message(self):
         output = self.issue_command('rsvp yes', message_type='private')
         self.assertEqual('private', output[0]['type'])
-        self.assertEqual('a@example.com', output[0]['display_recipient'])
+        self.assertEqual('test@example.com', output[0]['display_recipient'])
 
     def test_rsvp_help_replies_privately(self):
         output = self.issue_command('rsvp help')
-        self.assertEqual(output[0]['display_recipient'], 'a@example.com')
+        self.assertEqual(output[0]['display_recipient'], 'test@example.com')
         self.assertEqual(output[0]['type'], 'private')
 
 
-@unittest.skip
 class RSVPMultipleCommandsTest(RSVPTest):
-    def test_rsvp_multiple_commands_with_trailing_spaces(self):
-        commands = """
-rsvp set time 10:30
-rsvp set date 02/25/2099
-"""
-        output = self.issue_command(commands)
-
-        self.assertIn('has been set to **10:30**', output[0]['body'])
-        self.assertEqual('10:30', self.event['time'])
-        self.assertIn('has been set to **02/25/99**!', output[1]['body'])
-        self.assertEqual( '2099-02-25', self.event['date'])
-
-    def test_rsvp_multiple_commands_with_init(self):
-        # hack to allow rsvp init to be run in whatever the "current stream" is.
-        output = self.issue_command('rsvp move http://testhost/#narrow/stream/test-move/subject/MovedTo')
-        commands = """
-rsvp init
-rsvp set time 10:30
-rsvp set date 02/25/2099
-"""
-
-        output = self.issue_command(commands)
-        event = self.get_test_event()
-
-        self.assertIn('This thread is now an RSVPBot event! Type `rsvp help` for more options.', output[0]['body'])
-        self.assertIn('has been set to **10:30**', output[1]['body'])
-        self.assertEqual('10:30', event['time'])
-        self.assertIn('has been set to **02/25/99**!', output[2]['body'])
-        self.assertEqual( '2099-02-25', event['date'])
-
     def test_rsvp_multiple_commands(self):
         commands = """
-rsvp set time 10:30
-rsvp set date 02/25/2099
+rsvp yes
+rsvp no
 """
-
         output = self.issue_command(commands)
-        self.assertIn(
-            'has been set to **10:30**',
-            output[0]['body'])
 
-        self.assertEqual('10:30', self.event['time'])
-
-        self.assertIn(
-            'has been set to **02/25/99**!',
-            output[1]['body']
-        )
-        self.assertEqual( '2099-02-25', self.event['date'])
+        self.assertIn('**You** are attending', output[0]['body'])
+        self.assertIn('You are **not** attending', output[1]['body'])
 
     def test_rsvp_multiple_commands_with_other_text(self):
         commands = """
-rsvp set time 10:30
+rsvp yes
 Looking forward to this!
-rsvp set date 02/25/2099
+rsvp no
 """
 
         output = self.issue_command(commands)
-        self.assertIn(
-            'has been set to **10:30**',
-            output[0]['body'])
 
-        self.assertEqual('10:30', self.event['time'])
-
+        self.assertIn('**You** are attending', output[0]['body'])
         self.assertEqual(None, output[1])
-
-        self.assertIn(
-            'has been set to **02/25/99**!',
-            output[2]['body']
-        )
-        self.assertEqual('2099-02-25', self.event['date'])
+        self.assertIn('You are **not** attending', output[2]['body'])
 
 
 if __name__ == '__main__':
