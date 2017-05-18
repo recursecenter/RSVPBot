@@ -1,45 +1,62 @@
 RSVPBot
 =======
-[![Build Status](https://travis-ci.org/kokeshii/RSVPBot.svg?branch=master)](https://travis-ci.org/kokeshii/RSVPBot)
 
-This is a simple Zulip bot that converts a Zulip conversation into an event context.
-People can then use simple commands to rsvp to an event, set the hour, time, place, and easily ping every person who RSVP'ed.
+This is a Zulip bot that integrates with the Recurse Center calendar. The original version is standalone, and can be found at kokeshii/RSVPBot.
 
 ## Contributing
 
-* Make your pull requests to the `dev` branch
 * Write tests for any new command or feature introduced
 * Make sure the requirements.txt file is kept up to date
-* Make sure any new messages that the bot sends publicly or privately follow the [RC Social Rules](https://www.recurse.com/manual#sub-sec-social-rules). It takes a village, people!
-* New features are TOTALLY AWESOME, but RSVPBot has a few [open issues](https://github.com/kokeshii/RSVPBot/issues) you can take a look at if you want to get familiarized with the code or you're looking for ideas on how to contribute.
+* New features are TOTALLY AWESOME, but you can take a loot at [open issues](https://github.com/recursecenter/RSVPBot/issues) to get familiarized with the code or if you're looking for ideas on how to contribute.
 * HAVE FUN PEOPLE YAY
 
-## Environment Variables
+## Requirements
 
-```
-# Required
-export ZULIP_RSVP_EMAIL="<bot-email>"
-export ZULIP_RSVP_KEY="<bot-key>"
-
-# Optional
-export ZULIP_RSVP_SITE="https://your-zulip-site.com"  # default is https://recurse.zulipchat.com
-export ZULIP_KEY_WORD="rsvp"                          # default is rsvp
-```
+* PostgreSQL
+* [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
+* Python 3
 
 ## Running
-First, make sure python requirements are installed:
 
-`pip install -r requirements.txt`
+This bot uses Python 3 and is built to be deployed on Heroku and run using `heroku local`. You can set up environment variables by defining a `.env` in the root of your local repo:
 
-Then, to run the bot:
+```
+DATABASE_URL=postgres://localhost/rsvpbot
+PYTHONUNBUFFERED=true
 
-`python bot.py`
+ZULIP_RSVP_EMAIL=your-test-rsvp-bot@recurse.zulipchat.com
+ZULIP_RSVP_KEY=YOUR_API_KEY
+ZULIP_RSVP_SITE=https://recurse.zulipchat.com
 
+RC_CLIENT_ID=fake-client-id
+RC_CLIENT_SECRET=fake-client-secret
+RC_API_ROOT=http://localhost:4000/api/v1
+```
 
-## Testing
-`
-python tests.py
-`
+### One-time setup
+
+```
+createdb rsvpbot
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Running the code
+
+The `heroku` commands load environmental variables from your `.env` file. (You can learn more [here](https://devcenter.heroku.com/articles/heroku-cli).)
+
+```
+# To start the bot locally (see Procfile)
+heroku local
+
+# To run the tests
+heroku local:run python tests.py
+
+# To open a REPL
+heroku local:run python
+```
 
 ## Commands
 **Command**|**Description**
