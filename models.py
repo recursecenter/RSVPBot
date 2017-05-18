@@ -102,7 +102,7 @@ def post_changes_to_zulip(mapper, conn, event):
         if 'title' in changes:
             messages.append("The title has changed: " + event.title)
 
-        if 'start_time' in changes or 'end_time' in changes:
+        if '_start_time' in changes or '_end_time' in changes:
             messages.append("The time has changed: " + event.timestamp())
 
     if messages:
