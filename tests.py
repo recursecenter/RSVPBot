@@ -77,9 +77,8 @@ test_data_with_participants = {
 
 test_data = {k: v for k, v in test_data_with_participants.items() if k != 'participants'}
 
-def setup_mock_client(mock_client):
+class MockClient():
     def get_event(self, id, include_participants=False):
-        print("in mocked get event")
         if id == test_data['id'] and include_participants:
             return test_data_with_participants
         elif id == test_data['id']:
@@ -105,18 +104,11 @@ def setup_mock_client(mock_client):
     def leave(self, event_id, zulip_id):
         return {}
 
-    mock_client.get_event = get_event
-    mock_client.get_events = get_events
-    mock_client.join = join
-    mock_client.leave = leave
-
 class RSVPTest(unittest.TestCase):
     def setUp(self):
-        patcher = patch('rc.Client')
+        patcher = patch('rc.Client', MockClient)
         self.addCleanup(patcher.stop)
-        setup_mock_client(patcher.start())
-
-        #import pdb; pdb.set_trace()
+        patcher.start()
 
         self.rsvp = rsvp.RSVP('rsvp')
 
@@ -126,7 +118,6 @@ class RSVPTest(unittest.TestCase):
 
         self.event = Session.query(Event).get(event.id)
         self.issue_command('rsvp init {}'.format(self.event.url))
-        print("!!!!!!!!!after issue command")
 
 
     def tearDown(self):
@@ -163,7 +154,7 @@ class RSVPInitTest(RSVPTest):
         self.assertEqual('Testing', self.event.subject)
 
     def test_cannot_double_init(self):
-        output = self.issue_command('rsvp init')
+        output = self.issue_command('rsvp init {}'.format(test_data['id']))
         self.assertIn('is already an RSVPBot event', output[0]['body'])
 
 @unittest.skip
