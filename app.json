@@ -1,0 +1,17 @@
+{
+    "environments": {
+        "test": {
+            "env": {
+                "PYTHONUNBUFFERED": "true",
+                "RC_API_ROOT": "https://www.recurse.com/api/v1"
+            },
+            "scripts": {
+                "test-setup": "alembic upgrade head",
+                "test": "python tests.py"
+            },
+            "addons": [
+                "heroku-postgresql-hobby-dev"
+            ]
+        }
+    }
+}
