@@ -1,7 +1,9 @@
 RSVPBot
 =======
 
-This is a Zulip bot that integrates with the Recurse Center calendar. The original version is standalone, and can be found at kokeshii/RSVPBot.
+This is a Zulip bot that integrates with the [Recurse Center calendar](https://www.recurse.com/calendar). The original version which works independently of the RC calendar and includes Google Calendar integration can be found at kokeshii/RSVPBot.
+
+RSVPBot lets you associate a Zulip thread with an RC calendar event, and lets people RSVP to the event directly from Zulip.
 
 ## Contributing
 
@@ -57,6 +59,12 @@ heroku local:run python tests.py
 # To open a REPL
 heroku local:run python
 ```
+
+### Developing without API access
+
+RSVPBot relies on a special permission in the recurse.com API that lets it access events and RSVP on behalf of any user. This makes it hard for someone without access to the recurse.com codebase to work on RSVPBot.
+
+To get around this problem, we will be building a "dev server" that you can run locally that mimics the recurse.com events API. We'll be adding this to the RSVPBot repository shortly.
 
 ## Commands
 **Command**|**Description**
