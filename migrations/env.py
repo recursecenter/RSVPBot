@@ -6,7 +6,9 @@ from logging.config import fileConfig
 import os
 import sys
 
+print('cwd', os.getcwd())
 sys.path.append(os.getcwd())
+print('path', sys.path)
 
 from models import Base
 
