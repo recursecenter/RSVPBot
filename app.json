@@ -6,8 +6,7 @@
                 "RC_API_ROOT": "https://www.recurse.com/api/v1"
             },
             "scripts": {
-                "test-setup": "pip install -r requirements.txt"
-                "test-setup": "alembic upgrade head",
+                "test-setup": "pip install -r requirements.txt && alembic upgrade head",
                 "test": "python tests.py"
             },
             "addons": [
