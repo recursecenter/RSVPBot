@@ -7,8 +7,11 @@ from unittest.mock import patch
 
 import rsvp
 import rsvp_commands
-
+import strings
+import models
 from models import Event, Session, make_event
+
+models.engine.echo = False
 
 test_data_with_participants = {
     'id': 123456789,
@@ -74,15 +77,32 @@ test_data_with_participants = {
         }
     }]
 }
+test_data_with_participants_2 = {
+    **test_data_with_participants,
+    'id': 987654321,
+    'url': 'http://localhost:5000/calendar/987654321'
+}
 
 test_data = {k: v for k, v in test_data_with_participants.items() if k != 'participants'}
+test_data_2 = {k: v for k, v in test_data_with_participants_2.items() if k != 'participants'}
+
+api_data = {
+    test_data['id']: {
+        True: test_data_with_participants,
+        False: test_data
+    },
+    test_data_2['id']: {
+        True: test_data_with_participants_2,
+        False: test_data_2
+    }
+}
 
 class MockClient():
     def get_event(self, id, include_participants=False):
-        if id == test_data['id'] and include_participants:
-            return test_data_with_participants
-        elif id == test_data['id']:
-            return test_data
+        data = api_data.get(id)
+
+        if data:
+            return data[include_participants]
         else:
             return None
 
@@ -105,23 +125,27 @@ class MockClient():
         return {}
 
 class RSVPTest(unittest.TestCase):
+    def insert_event(self, data):
+        event = make_event(data)
+        Session.add(event)
+        Session.commit()
+        self._events.append(event)
+        return event
+
     def setUp(self):
         patcher = patch('rc.Client', MockClient)
         self.addCleanup(patcher.stop)
         patcher.start()
 
+        self._events = []
         self.rsvp = rsvp.RSVP('rsvp')
-
-        event = make_event(test_data)
-        Session.add(event)
-        Session.commit()
-
-        self.event = Session.query(Event).get(event.id)
+        self.event = self.insert_event(test_data)
         self.issue_command('rsvp init {}'.format(self.event.url))
 
 
     def tearDown(self):
-        Session.delete(self.event)
+        for event in self._events:
+            Session.delete(event)
         Session.commit()
 
     def create_input_message(
@@ -157,256 +181,164 @@ class RSVPInitTest(RSVPTest):
         output = self.issue_command('rsvp init {}'.format(test_data['id']))
         self.assertIn('is already an RSVPBot event', output[0]['body'])
 
-@unittest.skip
-class RSVPCancelTest(RSVPTest):
-    def test_event_cancel(self):
-        output = self.issue_command('rsvp cancel')
+class RSVPFunctionalityMovedTest(RSVPTest):
+    def test_functionality_moved(self):
+        commands = [
+            'set limit 5',
+            'set date foo',
+            'set time 10:00',
+            'set duration foo'
+            'set location foo',
+            'set place foo',
+            'set description foo'
+            'cancel',
+        ]
+        for command in commands:
+            output = self.issue_command('rsvp ' + command)
+            self.assertIn("RSVPBot doesn't support", output[0]['body'])
 
-        self.assertNotIn('test-stream/Testing', self.rsvp.events)
-        self.assertIn('has been canceled', output[0]['body'])
-
-    def test_cannot_double_cancel(self):
-        self.issue_command('rsvp cancel')
-
-        output = self.issue_command('rsvp cancel')
-        self.assertIn('is not an RSVPBot event', output[0]['body'])
-
-@unittest.skip
 class RSVPMoveTest(RSVPTest):
     def test_move_event(self):
         output = self.issue_command('rsvp move http://testhost/#narrow/stream/test-move/subject/MovedTo')
 
-        # current stream is no longer an event
-        self.assertNotIn('test-stream/Testing', self.rsvp.events)
+        self.assertEqual(self.event.stream, 'test-move')
+        self.assertEqual(self.event.subject, 'MovedTo')
         self.assertEqual(2, len(output))
 
-        self.assertIn("This event has been moved to [test-move/MovedTo]", output[0]['body'])
+        self.assertIn("This event has been moved to **[#test-move > MovedTo]", output[0]['body'])
         self.assertIn("#narrow/stream/test-move/subject/MovedTo", output[0]['body'])
         self.assertIn("test-stream", output[0]['display_recipient'])
         self.assertIn("Testing", output[0]['subject'])
 
-        # moved to IS now an event & was told so.
-        self.assertIn('test-move/MovedTo', self.rsvp.events)
-        self.assertIn("This thread is now an RSVPBot event! Type `rsvp help` for more options.", output[1]['body'])
+        self.assertIn("This thread is now an RSVPBot event", output[1]['body'])
         self.assertIn("test-move", output[1]['display_recipient'])
         self.assertIn("MovedTo", output[1]['subject'])
 
     def test_move_to_already_existing_event(self):
-        self.issue_command('rsvp init')
-        output = self.issue_command('rsvp move http://testhost/#narrow/stream/test-stream/subject/Testing')
+        event2 = self.insert_event(test_data_2)
+        other_thread = {
+            'display_recipient': 'other-stream',
+            'subject': 'Other Subject'
+        }
 
-        #attempted move to thread that's already an event (in this case, self)
+        self.issue_command('rsvp init {}'.format(test_data_2['id']), **other_thread)
+        output = self.issue_command('rsvp move http://testhost/#narrow/stream/test-stream/subject/Testing', **other_thread)
+
         self.assertEqual(1, len(output))
-        self.assertIn('test-stream/Testing', self.rsvp.events)
-        self.assertIn("Oops! `test-stream/Testing` is already an RSVPBot event", output[0]['body'])
-        self.assertIn("test-stream", output[0]['display_recipient'])
-        self.assertIn("Testing", output[0]['subject'])
+        self.assertEqual('other-stream', event2.stream)
+        self.assertEqual('Other Subject', event2.subject)
+        self.assertIn("Oops! #test-stream > Testing is already an RSVPBot event!", output[0]['body'])
+        self.assertIn("other-stream", output[0]['display_recipient'])
+        self.assertIn("Other Subject", output[0]['subject'])
 
-@unittest.skip
 class RSVPDecisionTest(RSVPTest):
-
-    event_id = 'Test/Test'
-
     def test_generate_response_yes(self):
         command = rsvp_commands.RSVPConfirmCommand(prefix='rsvp')
-        response = command.generate_response(decision='yes', event_id=self.event_id)
-        self.assertEqual("**You** are attending **{}**!".format(self.event_id), response)
+        response = command.generate_response('yes', self.event)
+        self.assertIn("**You** are attending", response)
 
     def test_generate_response_no(self):
         command = rsvp_commands.RSVPConfirmCommand(prefix='rsvp')
-        response = command.generate_response(decision='no', event_id=self.event_id)
-        self.assertEqual("You are **not** attending **{}**!".format(self.event_id), response)
-
-    def test_generate_response_maybe(self):
-        command = rsvp_commands.RSVPConfirmCommand(prefix='rsvp')
-        response = command.generate_response(decision='maybe', event_id=self.event_id)
-        self.assertEqual("You **might** be attending **{}**. It's complicated.".format(self.event_id), response)
+        response = command.generate_response('no', self.event)
+        self.assertIn("You are **not** attending", response)
 
     def test_generate_funky_response_yes(self):
         command = rsvp_commands.RSVPConfirmCommand(prefix='rsvp')
-        normal_response = command.generate_response(decision='yes', event_id=self.event_id)
+        normal_response = command.generate_response('yes', self.event)
         possible_expected_responses = [prefix + normal_response for prefix in command.funky_yes_prefixes]
-        response = command.generate_response(decision='yes', event_id=self.event_id, funkify=True)
+        response = command.generate_response('yes', self.event, funkify=True)
         self.assertIn(response, possible_expected_responses)
 
     def test_generate_funky_response_no(self):
         command = rsvp_commands.RSVPConfirmCommand(prefix='rsvp')
-        normal_response = command.generate_response(decision='no', event_id=self.event_id)
+        normal_response = command.generate_response('no', self.event)
         possible_expected_responses = [normal_response + postfix for postfix in command.funky_no_postfixes]
-        response = command.generate_response(decision='no', event_id=self.event_id, funkify=True)
+        response = command.generate_response('no', self.event, funkify=True)
         self.assertIn(response, possible_expected_responses)
 
-    def test_rsvp_yes_with_no_prior_reservation(self):
+    def test_rsvp_yes(self):
         output = self.issue_command('rsvp yes')
+        self.assertIn("**You** are attending", output[0]['body'])
 
-        self.assertEqual(None, self.event['limit'])
-        self.assertIn('**You** are attending', output[0]['body'])
-        self.assertIn('a@example.com', self.event['yes'])
-        self.assertNotIn('a@example.com', self.event['no'])
-        self.assertNotIn('a@example.com', self.event['maybe'])
-
-    def test_rsvp_maybe_with_no_prior_reservation(self):
+    def test_rsvp_maybe(self):
         output = self.issue_command('rsvp maybe')
+        self.assertEqual(strings.ERROR_RSVP_MAYBE_NOT_SUPPORTED, output[0]['body'])
 
-        self.assertEqual(None, self.event['limit'])
-        self.assertIn("You **might** be attending", output[0]['body'])
-        self.assertIn('a@example.com', self.event['maybe'])
-        self.assertNotIn('a@example.com', self.event['no'])
-        self.assertNotIn('a@example.com', self.event['yes'])
-
-    def test_rsvp_no_with_no_prior_reservation(self):
+    def test_rsvp_no(self):
         output = self.issue_command('rsvp no')
-
-        self.assertIn('You are **not** attending', output[0]['body'])
-        self.assertNotIn('a@example.com', self.event['yes'])
-        self.assertNotIn('a@example.com', self.event['maybe'])
-        self.assertIn('a@example.com', self.event['no'])
-
-    def test_rsvp_yes_with_prior_reservation(self):
-        self.issue_command('rsvp yes')
-        count_dict = Counter(self.event['yes'])
-
-        self.assertEqual(1, count_dict['a@example.com'])
-
-        self.issue_command('rsvp yes')
-        count_dict = Counter(self.event['yes'])
-        self.assertEqual(1, count_dict['a@example.com'])
-
-    def test_rsvp_maybe_with_prior_reservation(self):
-        self.issue_command('rsvp maybe')
-        output = self.issue_command('rsvp maybe')
-
-        count_dict = Counter(self.event['maybe'])
-
-        self.assertEqual(1, count_dict['a@example.com'])
-
-    def test_rsvp_no_with_prior_cancelation(self):
-        self.issue_command('rsvp no')
-        output = self.issue_command('rsvp no')
-
-        count_dict = Counter(self.event['no'])
-
-        self.assertEqual(1, count_dict['a@example.com'])
-
-    def test_rsvp_changing_response(self):
-        output = self.issue_command('rsvp maybe')
-        count_dict = Counter(self.event['maybe'])
-        self.assertEqual(1, count_dict['a@example.com'])
-        self.assertIn("You **might** be attending", output[0]['body'])
-
-        # NOT in the yes or no lists
-        count_dict = Counter(self.event['yes'])
-        self.assertEqual(0, count_dict['a@example.com'])
-        count_dict = Counter(self.event['no'])
-        self.assertEqual(0, count_dict['a@example.com'])
-
-        output = self.issue_command('rsvp no')
-        count_dict = Counter(self.event['no'])
-        self.assertEqual(1, count_dict['a@example.com'])
         self.assertIn('You are **not** attending', output[0]['body'])
 
-        # NOT in the yes or maybe lists
-        count_dict = Counter(self.event['yes'])
-        self.assertEqual(0, count_dict['a@example.com'])
-        count_dict = Counter(self.event['maybe'])
-        self.assertEqual(0, count_dict['a@example.com'])
-
-        output = self.issue_command('rsvp yes')
-        count_dict = Counter(self.event['yes'])
-        self.assertEqual(1, count_dict['a@example.com'])
-        self.assertIn('**You** are attending', output[0]['body'])
-
-        # NOT in the no or maybe lists
-        count_dict = Counter(self.event['no'])
-        self.assertEqual(0, count_dict['a@example.com'])
-        count_dict = Counter(self.event['maybe'])
-        self.assertEqual(0, count_dict['a@example.com'])
-
-    def general_yes_with_no_prior_reservation(self, msg):
+    def general_yes(self, msg):
         output = self.issue_command(msg)
-
-        self.assertEqual(None, self.event['limit'])
         self.assertIn('are attending', output[0]['body'])
-        self.assertIn('a@example.com', self.event['yes'])
-        self.assertNotIn('a@example.com', self.event['no'])
+
+    def general_no(self, msg):
+        output = self.issue_command(msg)
+        self.assertIn('are **not** attending', output[0]['body'])
 
     def test_rsvp_hell_yes(self):
-        self.general_yes_with_no_prior_reservation('rsvp hell yes')
+        self.general_yes('rsvp hell yes')
 
     def test_rsvp_hell_yes_with_no(self):
-        self.general_yes_with_no_prior_reservation('rsvp hell to the yes I have no plans!')
+        self.general_yes('rsvp hell to the yes I have no plans!')
 
     def test_rsvp_yes_plz(self):
-        self.general_yes_with_no_prior_reservation('rsvp yes plz!')
+        self.general_yes('rsvp yes plz!')
 
     def test_rsvp_yes_with_nose_in_it(self):
-        self.general_yes_with_no_prior_reservation('rsvp yes, after my nose job')
+        self.general_yes('rsvp yes, after my nose job')
 
     def test_rsvp_yes_no(self):
-        self.general_yes_with_no_prior_reservation('rsvp yes no')
+        self.general_yes('rsvp yes no')
 
     def test_rsvp_yessssssssssss(self):
-        self.general_yes_with_no_prior_reservation('rsvp yesssssssssss')
+        self.general_yes('rsvp yesssssssssss')
 
     def test_rsvp_yassssssssssss(self):
-        self.general_yes_with_no_prior_reservation('rsvp yasssssssssss')
+        self.general_yes('rsvp yasssssssssss')
 
     def test_rsvp_thumbsup(self):
-        self.general_yes_with_no_prior_reservation('rsvp :thumbsup:')
+        self.general_yes('rsvp :thumbsup:')
 
     def test_rsvp_thumbs_up(self):
-        self.general_yes_with_no_prior_reservation('rsvp :thumbs_up:')
+        self.general_yes('rsvp :thumbs_up:')
 
     def test_rsvp_thumbsdown(self):
-        self.general_no_with_no_prior_reservation('rsvp :thumbsdown:')
+        self.general_no('rsvp :thumbsdown:')
 
     def test_rsvp_thumbs_down(self):
-        self.general_no_with_no_prior_reservation('rsvp :thumbs_down:')
+        self.general_no('rsvp :thumbs_down:')
 
     def test_rsvp_plus_one(self):
-        self.general_yes_with_no_prior_reservation('rsvp :+1:')
+        self.general_yes('rsvp :+1:')
 
     def test_rsvp_minus_one(self):
-        self.general_no_with_no_prior_reservation('rsvp :-1:')
+        self.general_no('rsvp :-1:')
 
     def test_rsvp_y(self):
-        self.general_yes_with_no_prior_reservation('rsvp y')
+        self.general_yes('rsvp y')
 
     def test_rsvp_n(self):
-        self.general_no_with_no_prior_reservation('rsvp n')
-
-
-    def general_no_with_no_prior_reservation(self, msg):
-        output = self.issue_command(msg)
-
-        self.assertEqual(None, self.event['limit'])
-        self.assertNotIn('are attending', output[0]['body'])
-        self.assertIn('are **not** attending', output[0]['body'])
-        self.assertNotIn('a@example.com', self.event['yes'])
-        self.assertIn('a@example.com', self.event['no'])
+        self.general_no('rsvp n')
 
     def test_rsvp_hell_no(self):
-        self.general_no_with_no_prior_reservation('rsvp hell no!')
+        self.general_no('rsvp hell no!')
 
     def test_rsvp_no_way(self):
-        self.general_no_with_no_prior_reservation('rsvp no, i\'m busy')
+        self.general_no('rsvp no, i\'m busy')
 
     def test_rsvp_nah(self):
-        self.general_no_with_no_prior_reservation("rsvp nah can't make it :(!")
+        self.general_no("rsvp nah can't make it :(!")
 
     def test_rsvp_noooooo(self):
-        self.general_no_with_no_prior_reservation('rsvp nooooooooooooo!')
+        self.general_no('rsvp nooooooooooooo!')
 
     def test_rsvp_no_yes(self):
-        self.general_no_with_no_prior_reservation('rsvp no, yes i was there yesterday.')
+        self.general_no('rsvp no, yes i was there yesterday.')
 
     def rsvp_word_contains_command(self, msg):
         output = self.issue_command(msg)
-        self.assertEqual(None, self.event['limit'])
         self.assertIn('is not a valid RSVPBot command!', output[0]['body'])
-        self.assertNotIn('are attending', output[0]['body'])
-        self.assertNotIn('are **not** attending', output[0]['body'])
-        self.assertNotIn('a@example.com', self.event['no'])
 
     def test_rsvp_nose(self):
         self.rsvp_word_contains_command('rsvp nose jobs')
@@ -418,16 +350,16 @@ class RSVPDecisionTest(RSVPTest):
         self.rsvp_word_contains_command('rsvp eyes')
 
     def test_rsvp_no_eyes(self):
-        self.general_no_with_no_prior_reservation('rsvp no eyes')
+        self.general_no('rsvp no eyes')
 
     def test_rsvp_yes_exclamation_no_plans(self):
-        self.general_yes_with_no_prior_reservation('rsvp yes! i couldn\'t say no')
+        self.general_yes('rsvp yes! i couldn\'t say no')
 
     def test_rsvp_NO(self):
-        self.general_no_with_no_prior_reservation('rsvp hell NO!')
+        self.general_no('rsvp hell NO!')
 
     def test_RSVP_yes_way(self):
-        self.general_yes_with_no_prior_reservation('RSVP yes plz')
+        self.general_yes('RSVP yes plz')
 
 @unittest.skip
 class RSVPLimitTest(RSVPTest):
