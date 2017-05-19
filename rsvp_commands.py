@@ -37,6 +37,8 @@ def extract_id(id_or_url):
   else:
     return None
 
+def event_exists(stream, subject):
+  return Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0
 
 class RSVPMessage(object):
   """Class that represents a response from an RSVPCommand.
@@ -102,6 +104,20 @@ class RSVPEventNeededCommand(RSVPCommand):
 
 
 class RSVPInitCommand(RSVPCommand):
+  regex = r'init$'
+
+  def run(self, *args, **kwargs):
+    stream = kwargs['stream']
+    subject = kwargs['subject']
+    sender_email = kwargs['sender_email']
+
+    if event_exists(stream, subject):
+      return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_ALREADY_AN_EVENT, sender_email))
+
+    return RSVPCommandResponse(RSVPMessage('private', strings.MSG_CREATE_EVENT_ON_RC_CALENDAR.format(urllib.parse.urlencode({'stream': stream, 'subject': subject})), sender_email))
+
+
+class RSVPInitEventCommand(RSVPCommand):
   regex = r'init (?P<rc_id_or_url>.+)'
 
   def run(self, *args, **kwargs):
@@ -114,7 +130,7 @@ class RSVPInitCommand(RSVPCommand):
     if stream == config.rsvpbot_stream and subject == config.rsvpbot_announce_subject:
       return RSVPCommandResponse(RSVPMessage('stream', strings.ERROR_CANNOT_INIT_IN_ANNOUNCE_THREAD))
 
-    if Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0:
+    if event_exists(stream, subject):
       return RSVPCommandResponse(RSVPMessage('private', strings.ERROR_ALREADY_AN_EVENT, sender_email))
 
     if not rc_event_id:
