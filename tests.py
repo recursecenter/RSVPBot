@@ -5,6 +5,8 @@ import os
 import unittest
 from unittest.mock import patch
 
+from tap import TAPTestRunner
+
 import rsvp
 import rsvp_commands
 import strings
@@ -462,4 +464,13 @@ rsvp no
 
 
 if __name__ == '__main__':
-    unittest.main()
+    if os.getenv('HEROKU_CI', None):
+        tests_dir = os.path.dirname(os.path.abspath(__file__))
+        loader = unittest.TestLoader()
+        tests = loader.discover(tests_dir)
+        runner = TAPTestRunner()
+        runner.set_stream(True)
+        runner.set_outdir(False)
+        runner.run(tests)
+    else:
+        unittest.main()
