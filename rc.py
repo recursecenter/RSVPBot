@@ -61,7 +61,6 @@ class Client:
         auth = (self.id, self.secret)
         url = self.api_root + '/' + path
 
-        print('data', data)
         return requests.patch(url, json=data, auth=auth)
 
 def get_event(id, **kwargs):

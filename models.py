@@ -35,12 +35,11 @@ class Event(Base):
     stream = Column(String)
     subject = Column(String)
 
-    @validates('stream', 'subject')
+    @validates('subject')
     def validate_stream_and_subject(self, key, field):
-        if key is 'subject':
-            only_one_set = self.stream and not field or field and not self.stream
-            if only_one_set:
-                raise ValueError("must set both stream and subject, or neither")
+        only_one_set = self.stream and not field or field and not self.stream
+        if only_one_set:
+            raise ValueError("must set both stream and subject, or neither")
 
         return field
 
@@ -100,21 +99,18 @@ class Event(Base):
 
 @sqlalchemy.event.listens_for(Event, 'before_insert')
 def ensure_one_event_per_thread(mapper, conn, event):
-    if event.already_initialized():
-        thread_already_taken = Session.query(Event).filter(Event.stream == event.stream).filter(Event.subject == event.subject).count() > 0
-
-        if thread_already_taken:
-            zulip_util.send_message({
-                "type": "stream",
-                "display_recipient": event.stream,
-                "subject": event.subject,
-                "body": strings.ERROR_THREAD_FROM_RC_ALREADY_AN_EVENT.format(title=event.title, url=event.url)
-            })
-            rc.update_event(event.recurse_id, {
-                'stream': None,
-                'subject': None
-            })
-            raise ValueError('cannot add event to a thread already tracking another event')
+    if event.already_initialized() and event_exists(event.stream, event.subject):
+        zulip_util.send_message({
+            "type": "stream",
+            "display_recipient": event.stream,
+            "subject": event.subject,
+            "body": strings.ERROR_THREAD_FROM_RC_ALREADY_AN_EVENT.format(title=event.title, url=event.url)
+        })
+        rc.update_event(event.recurse_id, {
+            'stream': None,
+            'subject': None
+        })
+        raise ValueError('cannot add event to a thread already tracking another event')
 
 @sqlalchemy.event.listens_for(Event, 'after_insert')
 def announce_on_zulip(mapper, conn, event):
@@ -175,8 +171,8 @@ def event_dict(e):
         "created_by": e['created_by']['name'],
         "url": e['url'],
         "title": e['title'],
-        "stream": e['stream'],
-        "subject": e['subject']
+        "stream": e.get('stream'),
+        "subject": e.get('subject')
     }
 
 def make_event(e):
@@ -206,3 +202,8 @@ def get_changes(obj):
 
     return changes
 
+def event_exists(stream, subject):
+    if stream and subject:
+        return Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0
+    else:
+        return False

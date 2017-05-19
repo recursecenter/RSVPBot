@@ -76,4 +76,3 @@ def run_poller(running):
 
     print("Quitting poller")
     sys.exit()
-

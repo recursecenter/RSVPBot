@@ -8,7 +8,7 @@ import urllib.parse
 
 import strings
 import util
-from models import Event, Session, insert_event
+from models import Event, Session, insert_event, event_exists
 import rc
 import zulip_util
 import config
@@ -37,8 +37,6 @@ def extract_id(id_or_url):
   else:
     return None
 
-def event_exists(stream, subject):
-  return Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0
 
 class RSVPMessage(object):
   """Class that represents a response from an RSVPCommand.
@@ -94,6 +92,7 @@ class RSVPEventNeededCommand(RSVPCommand):
   def execute(self, *args, **kwargs):
     stream = kwargs.get('stream')
     subject = kwargs.get('subject')
+
     event = Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).first()
 
     if event:

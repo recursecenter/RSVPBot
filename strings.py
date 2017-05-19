@@ -17,7 +17,7 @@ MSG_INIT_SUCCESSFUL = 'This thread is now an RSVPBot event for **[{}]({})**! Typ
 MSG_EVENT_MOVED = "This event has been moved to **[%s](%s)**!"
 
 ERROR_INVALID_COMMAND = "`%s` is not a valid RSVPBot command! Type `rsvp help` for the correct syntax."
-ERROR_NOT_AN_EVENT = "This thread is not an RSVPBot event!. Type `rsvp init event-url` to make it into an event."
+ERROR_NOT_AN_EVENT = "This thread is not an RSVPBot event! Type `rsvp init event-url` to make it into an event."
 ERROR_ALREADY_AN_EVENT = "Oops! That thread is already an RSVPBot event!"
 ERROR_MISSING_MOVE_DESTINATION = "`rsvp move` requires a Zulip stream URL destination (e.g. 'https://recurse.zulipchat.com/#narrow/stream/announce/topic/All.20Hands.20Meeting')"
 ERROR_BAD_MOVE_DESTINATION = "%s is not a valid move destination URL! `rsvp move` requires a Zulip stream URL destination (e.g. 'https://recurse.zulipchat.com/#narrow/stream/announce/topic/All.20Hands.20Meeting') Type `rsvp help` for the correct syntax."
