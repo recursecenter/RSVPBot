@@ -101,12 +101,23 @@ class Event(Base):
 @sqlalchemy.event.listens_for(Event, 'after_insert')
 def announce_on_zulip(mapper, conn, event):
     if event.already_initialized():
-        zulip_util.send_message({
-            "type": "stream",
-            "display_recipient": event.stream,
-            "subject": event.subject,
-            "body": strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url)
-        })
+        thread_already_taken = Session.query(Event).filter(Event.stream == event.stream).filter(Event.subject == event.subject).count() > 1
+
+        if thread_already_taken:
+            zulip_util.send_message({
+                "type": "stream",
+                "display_recipient": event.stream,
+                "subject": event.subject,
+                "body": strings.ERROR_THREAD_FROM_RC_ALREADY_AN_EVENT.format(title=event.title, url=event.url)
+            })
+            event.update(stream=None, subject=None)
+        else:
+            zulip_util.send_message({
+                "type": "stream",
+                "display_recipient": event.stream,
+                "subject": event.subject,
+                "body": strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url)
+            })
     else:
         zulip_util.announce_event(event)
 

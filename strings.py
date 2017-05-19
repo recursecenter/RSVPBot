@@ -37,3 +37,12 @@ ERROR_NO_EVENT_ID = """
 rsvp init %s/calendar/123-my-event
 ```
 """.strip() % config.rc_root
+
+ERROR_THREAD_FROM_RC_ALREADY_AN_EVENT = """
+Oops! Someone tried to create an event on the RC calendar using this thread, but it's already tracking an event.
+
+Here's the event: **[{title}]({url})**
+
+To start another RSVPBot thread for this event:
+```rsvp init {url}```
+""".strip()
