@@ -98,10 +98,10 @@ class Event(Base):
         url = zulip_util.stream_topic_to_narrow_url(self.stream, self.subject)
         return "**[#{} > {}]({})**".format(self.stream, self.subject, url)
 
-@sqlalchemy.event.listens_for(Event, 'after_insert')
-def announce_on_zulip(mapper, conn, event):
+@sqlalchemy.event.listens_for(Event, 'before_insert')
+def ensure_one_event_per_thread(mapper, conn, event):
     if event.already_initialized():
-        thread_already_taken = Session.query(Event).filter(Event.stream == event.stream).filter(Event.subject == event.subject).count() > 1
+        thread_already_taken = Session.query(Event).filter(Event.stream == event.stream).filter(Event.subject == event.subject).count() > 0
 
         if thread_already_taken:
             zulip_util.send_message({
@@ -110,14 +110,21 @@ def announce_on_zulip(mapper, conn, event):
                 "subject": event.subject,
                 "body": strings.ERROR_THREAD_FROM_RC_ALREADY_AN_EVENT.format(title=event.title, url=event.url)
             })
-            event.update(stream=None, subject=None)
-        else:
-            zulip_util.send_message({
-                "type": "stream",
-                "display_recipient": event.stream,
-                "subject": event.subject,
-                "body": strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url)
+            rc.update_event(event.recurse_id, {
+                'stream': None,
+                'subject': None
             })
+            raise ValueError('cannot add event to a thread already tracking another event')
+
+@sqlalchemy.event.listens_for(Event, 'after_insert')
+def announce_on_zulip(mapper, conn, event):
+    if event.already_initialized():
+        zulip_util.send_message({
+            "type": "stream",
+            "display_recipient": event.stream,
+            "subject": event.subject,
+            "body": strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url)
+        })
     else:
         zulip_util.announce_event(event)
 

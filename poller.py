@@ -70,6 +70,7 @@ def run_poller(running):
             update_tracked_events()
         except Exception:
             print(traceback.format_exc())
+            Session.rollback()
 
         time.sleep(15)
 
