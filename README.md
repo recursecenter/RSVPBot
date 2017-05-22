@@ -20,7 +20,7 @@ RSVPBot lets you associate a Zulip thread with an RC calendar event, and lets pe
 
 ## Running
 
-This bot uses Python 3 and is built to be deployed on Heroku and run using `heroku local`. You can set up environment variables by defining a `.env` in the root of your local repo:
+This bot uses Python 3 and is built to be deployed on Heroku. RSVPBot will automatically load any environment variables you set in a file called `.env` in the root of your local repo:
 
 ```
 DATABASE_URL=postgres://localhost/rsvpbot
@@ -45,7 +45,7 @@ pip install -r requirements.txt
 createdb rsvpbot
 
 # Runs migrations. See `alembic help` for more info.
-heroku local:run alembic upgrade head
+alembic upgrade head
 ```
 
 ### Running the code
@@ -57,10 +57,7 @@ The `heroku` commands load environmental variables from your `.env` file. (You c
 heroku local
 
 # To run the tests
-heroku local:run python tests.py
-
-# To open a REPL
-heroku local:run python
+python tests.py
 ```
 
 ### Developing without API access

@@ -1,3 +1,7 @@
+#Do this early in case anything depends on .env
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+
 from threading import Thread
 import traceback
 import signal
