@@ -13,6 +13,7 @@ class RSVP(object):
     self.key_word = key_word
     self.command_list = (
       rsvp_commands.RSVPInitCommand(key_word),
+      rsvp_commands.RSVPInitEventCommand(key_word),
       rsvp_commands.RSVPHelpCommand(key_word),
       rsvp_commands.RSVPMoveCommand(key_word),
       rsvp_commands.RSVPSummaryCommand(key_word),

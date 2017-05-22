@@ -1,12 +1,15 @@
 from collections import Counter
 from datetime import date, timedelta
+import dateutil.parser
 import os
 
 import unittest
 from unittest.mock import patch
+from vcr_unittest import VCRMixin
 
 from tap import TAPTestRunner
 
+import rc
 import rsvp
 import rsvp_commands
 import strings
@@ -15,138 +18,28 @@ from models import Event, Session, make_event
 
 models.engine.echo = False
 
-test_data_with_participants = {
-    'id': 123456789,
-    'title': 'VisiData workshop for users',
-    'description': 'Learn how to use VisiData, a terminal-based tool for rapid exploration of tabular data.  Bring a data file and start browsing in seconds!',
-    'category': 'programming_and_education',
-    'rsvp_capacity': None,
-    'allow_guests': False,
-    'archived': False,
-    'anonymize_participants': False,
-    'participant_count': 3,
-    'created_at': '2017-05-05T01:39:33-04:00',
-    'start_time': '2017-05-24T15:00:00-04:00',
-    'end_time': '2017-05-24T16:00:00-04:00',
-    'rsvp_deadline': None,
-    'timezone': 'America/New_York',
-    'url': 'http://localhost:5000/calendar/123456789',
-    'created_by': {
-        'id': 2205,
-        'name': 'Saul Pwanson',
-        'first_name': 'Saul',
-        'profile_path': '/directory/2205-saul-pwanson',
-        'image_path': '/assets/people/saul_pwanson_150.jpg'
-    },
-    'location': {
-        'id': 2,
-        'name': 'Hopper - Recurse Center',
-        'address': '455 Broadway, 2nd Floor',
-        'city': 'New York City, NY'
-    },
-    'participants': [{
-        'id': 594,
-        'participant_number': 1,
-        'created_at_utc': 1493962773,
-        'person': {
-            'id': 2205,
-            'name': 'Saul Pwanson',
-            'zulip_id': 100791,
-            'profile_path': '/directory/2205-saul-pwanson',
-            'image_path': '/assets/people/saul_pwanson_50.jpg'
-        }
-    },{
-        'id': 1222,
-        'participant_number': 2,
-        'created_at_utc': 1494380829,
-        'person': {
-            'id': 34,
-            'name': 'Nick Bergson-Shilcock',
-            'zulip_id': 811,
-            'profile_path': '/directory/34-nick-bergson-shilcock',
-            'image_path': '/assets/people/nick_bergson-shilcock_50.jpg'
-        }
-    },{
-        'id': 1315,
-        'participant_number': 3,
-        'created_at_utc': 1494974491,
-        'person': {
-            'id': 36,
-            'name': 'David Albert',
-            'zulip_id': 599,
-            'profile_path': '/directory/36-david-albert',
-            'image_path': '/assets/people/david_albert_50.jpg'
-        }
-    }]
-}
-test_data_with_participants_2 = {
-    **test_data_with_participants,
-    'id': 987654321,
-    'url': 'http://localhost:5000/calendar/987654321'
-}
-
-test_data = {k: v for k, v in test_data_with_participants.items() if k != 'participants'}
-test_data_2 = {k: v for k, v in test_data_with_participants_2.items() if k != 'participants'}
-
-api_data = {
-    test_data['id']: {
-        True: test_data_with_participants,
-        False: test_data
-    },
-    test_data_2['id']: {
-        True: test_data_with_participants_2,
-        False: test_data_2
-    }
-}
-
-class MockClient():
-    def get_event(self, id, include_participants=False):
-        data = api_data.get(id)
-
-        if data:
-            return data[include_participants]
-        else:
-            return None
-
-    def get_events(self, created_at_or_after=None, ids=None):
-        raise NotImplementedError("get_events hasn't been mocked yet")
-
-    def join(self, event_id, zulip_id):
-        if event_id != test_data['id']:
-            raise RuntimeError('unknown event_id for join')
-
-        return {
-            'joined': True,
-            'rsvps_disabled': False,
-            'event_archived': False,
-            'over_capacity': False,
-            'past_deadline': False
-        }
-
-    def leave(self, event_id, zulip_id):
-        return {}
-
-class RSVPTest(unittest.TestCase):
-    def insert_event(self, data):
-        event = make_event(data)
-        Session.add(event)
-        Session.commit()
-        self._events.append(event)
-        return event
-
+class RSVPTest(VCRMixin, unittest.TestCase):
     def setUp(self):
-        p1 = patch('rc.Client', MockClient)
-        p2 = patch('zulip_util.announce_event')
+        super().setUp()
+        p1 = patch('zulip_util.announce_event')
+        p2 = patch('zulip_util.send_message')
         self.addCleanup(p1.stop)
         self.addCleanup(p2.stop)
         p1.start()
         p2.start()
 
-        self._events = []
         self.rsvp = rsvp.RSVP('rsvp')
-        self.event = self.insert_event(test_data)
-        self.issue_command('rsvp init {}'.format(self.event.url))
 
+        self.test_data1, self.test_data2 = rc.get_events(
+            created_at_or_after=dateutil.parser.parse("2017-05-19T20:24:50.309192Z")
+        )
+
+        self.event, self.event2 = [make_event(self.test_data1), make_event(self.test_data2)]
+        self._events = [self.event, self.event2]
+        Session.add_all(self._events)
+        Session.commit()
+
+        self.issue_command('rsvp init {}'.format(self.event.url))
 
     def tearDown(self):
         for event in self._events:
@@ -159,7 +52,7 @@ class RSVPTest(unittest.TestCase):
             message_type='stream',
             display_recipient='test-stream',
             subject='Testing',
-            sender_id=12345,
+            sender_id=808, # Zach's Zulip id on recurse.zulipchat.com
             sender_full_name='Tester',
             sender_email='test@example.com'):
 
@@ -183,7 +76,7 @@ class RSVPInitTest(RSVPTest):
         self.assertEqual('Testing', self.event.subject)
 
     def test_cannot_double_init(self):
-        output = self.issue_command('rsvp init {}'.format(test_data['id']))
+        output = self.issue_command('rsvp init {}'.format(self.test_data2['id']))
         self.assertIn('is already an RSVPBot event', output[0]['body'])
 
 class RSVPFunctionalityMovedTest(RSVPTest):
@@ -200,41 +93,48 @@ class RSVPFunctionalityMovedTest(RSVPTest):
         ]
         for command in commands:
             output = self.issue_command('rsvp ' + command)
-            self.assertIn("RSVPBot doesn't support", output[0]['body'])
+            self.assertIn("RSVPBot doesn't support", output[0]['body'], "Incorrect message for command: " + command)
 
 class RSVPMoveTest(RSVPTest):
-    def test_move_event(self):
-        output = self.issue_command('rsvp move http://testhost/#narrow/stream/test-move/subject/MovedTo')
+    other_thread = {
+        'display_recipient': 'other-stream',
+        'subject': 'Other-Subject'
+    }
 
-        self.assertEqual(self.event.stream, 'test-move')
-        self.assertEqual(self.event.subject, 'MovedTo')
+    def test_move_event(self):
+        stream = self.other_thread['display_recipient']
+        subject = self.other_thread['subject']
+
+        output = self.issue_command('rsvp move http://testhost/#narrow/stream/%s/subject/%s' % (stream, subject))
+
+        self.assertEqual(self.event.stream, stream)
+        self.assertEqual(self.event.subject, subject)
         self.assertEqual(2, len(output))
 
-        self.assertIn("This event has been moved to **[#test-move > MovedTo]", output[0]['body'])
-        self.assertIn("#narrow/stream/test-move/subject/MovedTo", output[0]['body'])
+        self.assertIn("This event has been moved to **[#%s > %s]" % (stream, subject), output[0]['body'])
+        self.assertIn("#narrow/stream/%s/subject/%s" % (stream, subject), output[0]['body'])
         self.assertIn("test-stream", output[0]['display_recipient'])
         self.assertIn("Testing", output[0]['subject'])
 
         self.assertIn("This thread is now an RSVPBot event", output[1]['body'])
-        self.assertIn("test-move", output[1]['display_recipient'])
-        self.assertIn("MovedTo", output[1]['subject'])
+        self.assertIn(stream, output[1]['display_recipient'])
+        self.assertIn(subject, output[1]['subject'])
+
+        self.issue_command('rsvp move http://testhost/#narrow/stream/test-stream/subject/Testing', **self.other_thread)
 
     def test_move_to_already_existing_event(self):
-        event2 = self.insert_event(test_data_2)
-        other_thread = {
-            'display_recipient': 'other-stream',
-            'subject': 'Other Subject'
-        }
+        stream = self.other_thread['display_recipient']
+        subject = self.other_thread['subject']
 
-        self.issue_command('rsvp init {}'.format(test_data_2['id']), **other_thread)
-        output = self.issue_command('rsvp move http://testhost/#narrow/stream/test-stream/subject/Testing', **other_thread)
+        self.issue_command('rsvp init {}'.format(self.test_data2['id']), **self.other_thread)
+        output = self.issue_command('rsvp move http://testhost/#narrow/stream/test-stream/subject/Testing', **self.other_thread)
 
         self.assertEqual(1, len(output))
-        self.assertEqual('other-stream', event2.stream)
-        self.assertEqual('Other Subject', event2.subject)
+        self.assertEqual(stream, self.event2.stream)
+        self.assertEqual(subject, self.event2.subject)
         self.assertIn("Oops! #test-stream > Testing is already an RSVPBot event!", output[0]['body'])
-        self.assertIn("other-stream", output[0]['display_recipient'])
-        self.assertIn("Other Subject", output[0]['subject'])
+        self.assertIn(stream, output[0]['display_recipient'])
+        self.assertIn(subject, output[0]['subject'])
 
 class RSVPDecisionTest(RSVPTest):
     def test_generate_response_yes(self):
@@ -374,8 +274,8 @@ class RSVPSummaryTest(RSVPTest):
 
         self.assertIn(self.event.title, body)
         self.assertIn(self.event.timestamp(), body)
-        self.assertIn(test_data['location']['name'], body)
-        self.assertIn(test_data['description'], body)
+        self.assertIn(self.test_data1['location']['name'], body)
+        self.assertIn(self.test_data1['description'], body)
         self.assertIn('Test User', body)
 
 @patch('zulip_util.get_names', return_value=['A', 'B'])

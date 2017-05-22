@@ -37,6 +37,9 @@ class Client:
     def leave(self, event_id, zulip_id):
         return self.post_as_user('events/{}/leave'.format(event_id), zulip_id).json()
 
+    def update_event(self, event_id, updates):
+        return self.patch('events/{}'.format(event_id), data={'event': updates}).json()
+
     def post_as_user(self, path, zulip_id):
         auth = (self.id, self.secret)
         url = self.api_root + '/' + path
@@ -54,6 +57,12 @@ class Client:
 
         return requests.get(url, params=params, auth=auth)
 
+    def patch(self, path, data={}):
+        auth = (self.id, self.secret)
+        url = self.api_root + '/' + path
+
+        return requests.patch(url, json=data, auth=auth)
+
 def get_event(id, **kwargs):
     return Client().get_event(id, **kwargs)
 
@@ -65,3 +74,6 @@ def join(event_id, zulip_id):
 
 def leave(event_id, zulip_id):
     return Client().leave(event_id, zulip_id)
+
+def update_event(event_id, updates):
+    return Client().update_event(event_id, updates)

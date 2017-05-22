@@ -1,0 +1,99 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Authorization: [Basic MTFhMGI0ZWVmY2NlODE0ZjNjYWQyOGUwZWIzNGUzZGRkOWIyOTgyMTg1NmJhOTM5NjA5MDM2M2I2MGMxMDdiNzo5ZjE3MWNmYTRiNjk4MjhmZGIwMjNjMjgxMjlkNTE0NmE5NTc2MDkwZmFjYWUzN2NjZWM3MGJmMGU2OTE1ZGFl]
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.14.2]
+    method: GET
+    uri: http://localhost:5000/api/v1/events?created_at_or_after=2017-05-19T20%3A24%3A50.309192%2B00%3A00
+  response:
+    body:
+      string: !!binary |
+        H4sIAMNeH1kAA9SSTW/bMAyG/4qgs13bid2gvnXFdhp6GHLphkFgJcZWJ1uGJCdIhvz3UXGaZENX
+        9LANGKALyZfi1/PlO9eK14sy4UEHg7zmS/SBvV9jH1jBE67QS6eHoG0fg632jF5oka20I2WIcozy
+        K1JLCNhYtyXp4GzjoOt03wjolUA1UjR+k3Dn14OQMIDUgbT9aEzCwRi7Ec1IH3per8B4JKeTrV6j
+        Ojt62287vUMxgAta6gH6C/2FU0g79oHXRcJ9cAgdNRW7TY8WucfHJ5ThODQ1GiegWEAlILpnebFI
+        8yotbpbFdT2v6nKW5mWd5zE5UCkRdIcXwlm+LCqK0zsJkYZ/UTb/SXbYiUJQRvf4vJOYt7PR5rcd
+        Oi0hu8eNeLDuG6WMzlCgDWGos8xYCaa1PtRVnucZGVQYXLYoL6Z6pG1PJ7+hk/dw6OozyJbdGgNj
+        vM3hrOIiRD665UqbuPLQkjdT2tHe6M7ZTZnuSJPCc7ruoDkLwXsMPhvQDgazqBSTUhRVfvU0NHyf
+        8Nj5xNfUWnHq7BPK0Xlkd4QXOvodlHLo6dy8rCr2zllQG9gmbNYr9sFYGzUTU5z2xOKe2B3ZCbt/
+        4Pt9csS9ehH32au4e5SWqvyWd2+lBvOv4c7PcE+FTkxP5us4V/O34Dx/C87Xv1D/13Cu/jecq1Nn
+        H+0aDUhkKfvTZH/9AQAA//8DAOhbEbTKBQAA
+    headers:
+      Cache-Control: ['max-age=0, private, must-revalidate']
+      Content-Encoding: [gzip]
+      Content-Type: [application/json; charset=utf-8]
+      ETag: [W/"f16db3cfed851ea896110963efddec1b"]
+      Vary: [Accept-Encoding]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [SAMEORIGIN]
+      X-Request-Id: [db2cfa75-5c7e-4963-bfed-8c9b965caa64]
+      X-Runtime: ['0.187908']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Authorization: [Basic MTFhMGI0ZWVmY2NlODE0ZjNjYWQyOGUwZWIzNGUzZGRkOWIyOTgyMTg1NmJhOTM5NjA5MDM2M2I2MGMxMDdiNzo5ZjE3MWNmYTRiNjk4MjhmZGIwMjNjMjgxMjlkNTE0NmE5NTc2MDkwZmFjYWUzN2NjZWM3MGJmMGU2OTE1ZGFl]
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.14.2]
+    method: GET
+    uri: http://localhost:5000/api/v1/events/74?include_participants=False
+  response:
+    body:
+      string: !!binary |
+        H4sIAMNeH1kAA2ySTW/bMAyG/4qgs13bqb0gvnXFduxhyKW7CKzE2OpkyZDoBEmR/z4q6UcGDNCF
+        Lx9KJF+9SWtkv24LSZYcyl5uMZH4sUdPopGFNJh0tDPZ4HNytEnwoRHFzkYmKeOY8TumNRAOIR4Z
+        nWMYIkyT9YMCbxSahbP5mkLGtJ+Vhhm0JWb94lwhwblwUMPCFybZ78AlZDHq0e7RfAk++ONkT6hm
+        iGS1ncHf8Dei0mHxJPumkIkiwsRN5W7L94jl5eUVNb0PzY3mCThHaBRkeVU367Luymazbb71913f
+        rsq67es6FxM/pchOeAOu6m3TcZ7PJ4g8/H+x+3+wy04MgnHW48dOct0p5Fg+TBithuoJD+o5xD9c
+        skTHiZFo7qvKBQ1uDIn6rq7rigN+GGK1bm+meuFtv10s37DlHi5d/QY9igfnYMneXGxVNynW2Mud
+        dXnlNLJaGRt5b+xztWnLEzMlfJTbCYYvEFJCStWMYXZYZVJdSdV09d3rPMhzIXPn1/91ba357OwX
+        6iUmFI/8vTDy7WBMxMR2y7brxPcYwBzgWIiVN+KnCyEz1z8leU8i70k8clyIp2d5Pv8FAAD//wMA
+        mOVrGu4CAAA=
+    headers:
+      Cache-Control: ['max-age=0, private, must-revalidate']
+      Content-Encoding: [gzip]
+      Content-Type: [application/json; charset=utf-8]
+      ETag: [W/"6c27dffe02f843e39285eade024f3e23"]
+      Vary: [Accept-Encoding]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [SAMEORIGIN]
+      X-Request-Id: [d477cc1b-25cf-4714-b73b-a003f90cf6b7]
+      X-Runtime: ['0.159288']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+- request:
+    body: user_param=zulip_id&user_param_value=808
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Authorization: [Basic MTFhMGI0ZWVmY2NlODE0ZjNjYWQyOGUwZWIzNGUzZGRkOWIyOTgyMTg1NmJhOTM5NjA5MDM2M2I2MGMxMDdiNzo5ZjE3MWNmYTRiNjk4MjhmZGIwMjNjMjgxMjlkNTE0NmE5NTc2MDkwZmFjYWUzN2NjZWM3MGJmMGU2OTE1ZGFl]
+      Connection: [keep-alive]
+      Content-Length: ['40']
+      Content-Type: [application/x-www-form-urlencoded]
+      User-Agent: [python-requests/2.14.2]
+    method: POST
+    uri: http://localhost:5000/api/v1/events/74/leave
+  response:
+    body:
+      string: !!binary |
+        H4sIAMNeH1kAA6quBQAAAP//AwBDv6ajAgAAAA==
+    headers:
+      Cache-Control: ['max-age=0, private, must-revalidate']
+      Content-Encoding: [gzip]
+      Content-Type: [application/json; charset=utf-8]
+      ETag: [W/"99914b932bd37a50b983c5e7c90ae93b"]
+      Vary: [Accept-Encoding]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [SAMEORIGIN]
+      X-Request-Id: [dcf1b0ff-d5c2-4161-bbe7-009d122d0f06]
+      X-Runtime: ['0.166163']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+version: 1

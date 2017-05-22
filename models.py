@@ -7,11 +7,12 @@ import sqlalchemy
 
 from sqlalchemy import create_engine, Column, Integer, String, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, validates
 from sqlalchemy.inspection import inspect
 
 import zulip_util
 import rc
+import strings
 
 engine = create_engine(environ['DATABASE_URL'], echo=True)
 Base = declarative_base()
@@ -33,6 +34,14 @@ class Event(Base):
     title = Column(String)
     stream = Column(String)
     subject = Column(String)
+
+    @validates('subject')
+    def validate_stream_and_subject(self, key, field):
+        only_one_set = self.stream and not field or field and not self.stream
+        if only_one_set:
+            raise ValueError("must set both stream and subject, or neither")
+
+        return field
 
     @property
     def created_at(self):
@@ -88,9 +97,32 @@ class Event(Base):
         url = zulip_util.stream_topic_to_narrow_url(self.stream, self.subject)
         return "**[#{} > {}]({})**".format(self.stream, self.subject, url)
 
+@sqlalchemy.event.listens_for(Event, 'before_insert')
+def ensure_one_event_per_thread(mapper, conn, event):
+    if event.already_initialized() and event_exists(event.stream, event.subject):
+        zulip_util.send_message({
+            "type": "stream",
+            "display_recipient": event.stream,
+            "subject": event.subject,
+            "body": strings.ERROR_THREAD_FROM_RC_ALREADY_AN_EVENT.format(title=event.title, url=event.url)
+        })
+        rc.update_event(event.recurse_id, {
+            'stream': None,
+            'subject': None
+        })
+        raise ValueError('cannot add event to a thread already tracking another event')
+
 @sqlalchemy.event.listens_for(Event, 'after_insert')
 def announce_on_zulip(mapper, conn, event):
-    zulip_util.announce_event(event)
+    if event.already_initialized():
+        zulip_util.send_message({
+            "type": "stream",
+            "display_recipient": event.stream,
+            "subject": event.subject,
+            "body": strings.MSG_INIT_SUCCESSFUL.format(event.title, event.url)
+        })
+    else:
+        zulip_util.announce_event(event)
 
 @sqlalchemy.event.listens_for(Event, 'after_update')
 def post_changes_to_zulip(mapper, conn, event):
@@ -113,6 +145,17 @@ def post_changes_to_zulip(mapper, conn, event):
             "body": "**This event has changed!**\n" + "\n".join(messages)
         })
 
+@sqlalchemy.event.listens_for(Event, 'after_update')
+def notify_rc_of_thread_changes(mapper, conn, event):
+    if event.already_initialized():
+        changes = get_changes(event)
+
+        if 'stream' in changes or 'subject' in changes:
+            rc.update_event(event.recurse_id, {
+                'stream': event.stream,
+                'subject': event.subject
+            })
+
 def assign_attributes(model, attributes):
     for k, v in attributes.items():
         setattr(model, k, v)
@@ -127,7 +170,9 @@ def event_dict(e):
         "end_time": parse_time(e, 'end_time'),
         "created_by": e['created_by']['name'],
         "url": e['url'],
-        "title": e['title']
+        "title": e['title'],
+        "stream": e.get('stream'),
+        "subject": e.get('subject')
     }
 
 def make_event(e):
@@ -157,3 +202,8 @@ def get_changes(obj):
 
     return changes
 
+def event_exists(stream, subject):
+    if stream and subject:
+        return Session.query(Event).filter(Event.stream == stream).filter(Event.subject == subject).count() > 0
+    else:
+        return False

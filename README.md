@@ -74,7 +74,8 @@ To get around this problem, we will be building a "dev server" that you can run 
 --- | ---
 **`rsvp yes`**|Marks **you** as attending this event.
 **`rsvp no`**|Marks you as **not** attending this event.
-`rsvp init https://www.recurse.com/calendar/:id`|Initializes a thread as an RSVPBot event. Must be used before most other commands.
+`rsvp init`|Create a new event on the RC calendar that will be tracked in the thread you're in.
+`rsvp init https://www.recurse.com/calendar/:id`|Initializes a thread as an RSVPBot event using an existing RC calendar event. Must be used before most other commands.
 `rsvp help`|Shows this handy table.
 `rsvp ping`|Pings everyone that has RSVP'd so far.
 `rsvp summary`|Displays a summary of this event, including the description, and list of attendees.
