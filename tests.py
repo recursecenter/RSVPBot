@@ -75,12 +75,10 @@ class RSVPInitTest(RSVPTest):
     def test_event_init(self):
         self.assertEqual('test-stream', self.event.stream)
         self.assertEqual('Testing', self.event.subject)
-        raise("Nope")
 
     def test_cannot_double_init(self):
         output = self.issue_command('rsvp init {}'.format(self.test_data2['id']))
         self.assertIn('is already an RSVPBot event', output[0]['body'])
-        self.assertFalse(True)
 
 class RSVPFunctionalityMovedTest(RSVPTest):
     def test_functionality_moved(self):
