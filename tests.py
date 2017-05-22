@@ -2,6 +2,7 @@ from collections import Counter
 from datetime import date, timedelta
 import dateutil.parser
 import os
+import sys
 
 import unittest
 from unittest.mock import patch
@@ -371,6 +372,12 @@ if __name__ == '__main__':
         runner = TAPTestRunner()
         runner.set_stream(True)
         runner.set_outdir(False)
-        runner.run(tests)
+
+        result = runner.run(tests)
+        if result.wasSuccessful():
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
     else:
         unittest.main()
