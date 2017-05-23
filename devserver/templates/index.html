@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h1>RSVPBot dev server</h1>
+
+<ul>
+    {% for url, description in links %}
+        <li><a href="{{ url }}">{{ url }}</a> – {{ description }}</li>
+    {% endfor %}
+</u>
+{% endblock %}

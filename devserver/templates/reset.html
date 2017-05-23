@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<a href="/">← Back</a>
+
+<h1>Reset</h1>
+
+<p>Click this button to reset all events in the the dev server to their initial state. This will delete any events that have been added since launch.</p>
+
+<form action="/reset" method="POST">
+  <input type="submit" value="Reset events">
+</form>
+{% endblock %}
