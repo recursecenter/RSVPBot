@@ -150,15 +150,15 @@ original_api_data = [
     ),
     make_event(
         created_at=time_from_english('3 days ago'),
-        start_time=time_from_english('1 day from now'),
-        end_time=time_from_english('1 day, 1 hour from now'),
+        start_time=time_from_english('3 hours from now'),
+        end_time=time_from_english('3 hours, 30 minutes from now'),
         created_by=random.choice(users),
         participant_count=1
     ),
     make_event(
         created_at=time_from_english('30 minutes ago'),
-        start_time=time_from_english('3 hours from now'),
-        end_time=time_from_english('3 hours, 30 minutes from now'),
+        start_time=time_from_english('1 day from now'),
+        end_time=time_from_english('1 day, 1 hour from now'),
         created_by=random.choice(users),
         participant_count=3
     ),
@@ -170,9 +170,13 @@ api_data = deepcopy(original_api_data)
 def dtformat(value, format='%-m-%d-%Y at %H:%M'):
     return dateutil.parser.parse(value).strftime(format)
 
+
+def sort_by_start_time(events):
+    return sorted(events, key=lambda e: dateutil.parser.parse(e['start_time']))
+
 @app.route('/')
 def index():
-    return render_template('index.html', title="Index", events=api_data, flask_debug_mode=os.getenv('FLASK_DEBUG'))
+    return render_template('index.html', title="Index", events=sort_by_start_time(api_data), flask_debug_mode=os.getenv('FLASK_DEBUG'))
 
 @app.route('/reset', methods=['POST'])
 def reset():
@@ -184,7 +188,23 @@ def reset():
 
 @app.route('/create', methods=['POST'])
 def create():
-    return "Create not implemented"
+    days = random.randint(1, 10)
+    hours = random.randint(1, 10)
+
+    start_time = time_from_english("{} days, {} hours from now".format(days, hours))
+    end_time = start_time + datetime.timedelta(minutes=30)
+
+    event = make_event(
+        created_at=utcnow(),
+        start_time=start_time,
+        end_time=end_time,
+        created_by=random.choice(users),
+        participant_count=random.randint(0, len(users) - 1)
+    )
+
+    api_data.append(event)
+
+    return redirect(url_for('index'))
 
 
 # parses a date and sets tzinfo to UTC if it is not set.
@@ -200,20 +220,21 @@ def parse_date(s):
 def created_on_or_after(event, date):
     return dateutil.parser.parse(event['created_at']) >= date
 
+def find_event(id):
+    id = int(id)
+    return next((e for e in api_data if e['id'] == id), None)
+
 @app.route('/api/v1/events')
 def events():
     if 'created_at_or_after' in request.args:
         date = parse_date(request.args['created_at_or_after'])
-        return jsonify([event for event in api_data if created_on_or_after(event, date)])
+        events = [event for event in api_data if created_on_or_after(event, date)]
+        return jsonify(sort_by_start_time(events))
     elif 'ids' in request.args:
         ids = json.loads(request.args['ids'])
-        return jsonify([event for event in api_data if event['id'] in ids])
+        return jsonify([find_event(id) for id in ids if find_event(id) is not None])
     else:
         return jsonify([])
-
-def find_event(id):
-    id = int(id)
-    return next((e for e in api_data if e['id'] == id), None)
 
 def not_found():
     response = jsonify({"message":"not_found"})

@@ -9,7 +9,7 @@
 </div>
 {% endif %}
 
-<div style="display: flex;">
+<div style="display: flex; margin-bottom: 2rem;">
     <form action="/create" method="POST" style="margin-right: 1rem">
         <input type="submit" value="Create a new event in the future">
     </form>
@@ -19,7 +19,9 @@
     </form>
 </div>
 
-<ul style="margin-left: -2.25rem; margin-top: 2rem;">
+<p><em>Sorted by start time</em></p>
+
+<ul style="margin-left: -2.25rem;">
     {% for event in events %}
         <li>
             <div style="margin-bottom: 1rem;">
