@@ -173,9 +173,6 @@ users = [
 def utcnow():
     return datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
 
-def unixtime(dt):
-    return(dt - datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
-
 def ensure_plural(s):
     if s.endswith('s'):
         return s
@@ -184,10 +181,8 @@ def ensure_plural(s):
 
 # "3 days, 1 hour, 2 minutes ago" etc.
 def time_from_english(s):
-    est = pytz.timezone('America/New_York')
-
     if s == 'now':
-        return utcnow().astimezone(est)
+        return utcnow()
 
     # "3 days, 1 hour, 2 minutes ago" => ["3 days", "1 hour", "2 minutes ago"]
     parts = re.split(r',\s+', s)
@@ -208,13 +203,13 @@ def time_from_english(s):
 
     delta_args = {ensure_plural(units): int(number) * multiplier for number, units in split_parts}
 
-    return (utcnow() + datetime.timedelta(**delta_args)).astimezone(est)
+    return (utcnow() + datetime.timedelta(**delta_args))
 
 def make_participant(user, participant_number, created_at):
     return {
         "id": random.randint(1, 100_000),
         "participant_number": participant_number,
-        "created_at_utc": unixtime(created_at),
+        "created_at": created_at.isoformat(),
         "person": {
             **user,
         }
