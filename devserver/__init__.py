@@ -8,99 +8,6 @@ import random
 
 app = Flask(__name__)
 
-"""
-[
-  {
-    "id": 73,
-    "title": "machine learning papers kickoff",
-    "description": "Come along to figure out how we are going to organize our paper reading group.",
-    "category": "programming_and_education",
-    "rsvp_capacity": null,
-    "allow_guests": false,
-    "archived": false,
-    "anonymize_participants": false,
-    "participant_count": 7,
-    "stream": "RSVPs",
-    "subject": "machine learning papers",
-    "created_at": "2017-05-23T14:57:13-04:00",
-    "start_time": "2017-05-23T19:00:00-04:00",
-    "end_time": "2017-05-23T20:00:00-04:00",
-    "rsvp_deadline": null,
-    "timezone": "America/New_York",
-    "url": "http://localhost:5000/calendar/73",
-    "created_by": {
-      "id": 2239,
-      "name": "Naomi Saphra",
-      "first_name": "Naomi",
-      "profile_path": "/directory/2239-naomi-saphra",
-      "image_path": "/assets/people/naomi_saphra_150.jpg"
-    },
-    "location": {
-      "id": 2,
-      "name": "Hopper - Recurse Center",
-      "address": "455 Broadway, 2nd Floor",
-      "city": "New York City, NY"
-    }
-  },
-  {
-    "id": 70,
-    "title": "haskell",
-    "description": "first meeting around book chapters and exercises in Haskell, or FP at large. Get sense of how we can discuss / pair/ present/  help each other . google hangout also available [link](https://plus.google.com/hangouts/_/calendar/ZGNsYXUwNEBnbWFpbC5jb20.f8jj0gs4s7l9bkhk80b0vv4tn8?authuser=0) ",
-    "category": "programming_and_education",
-    "rsvp_capacity": null,
-    "allow_guests": false,
-    "archived": false,
-    "anonymize_participants": false,
-    "participant_count": 3,
-    "stream": "haskell",
-    "subject": "reading group Haskell Programming from first principles",
-    "created_at": "2017-05-23T12:34:08-04:00",
-    "start_time": "2017-05-24T11:00:00-04:00",
-    "end_time": "2017-05-24T12:00:00-04:00",
-    "rsvp_deadline": null,
-    "timezone": "America/New_York",
-    "url": "http://localhost:5000/calendar/70",
-    "created_by": {
-      "id": 2189,
-      "name": "Daniel Lau",
-      "first_name": "Daniel",
-      "profile_path": "/directory/2189-daniel-lau",
-      "image_path": "/assets/people/daniel_lau_150.jpg"
-    },
-    "location": {
-      "id": 5,
-      "name": "Lovelace - Recurse Center",
-      "address": "455 Broadway, 2nd Floor",
-      "city": "New York City, NY"
-    }
-    "participants": [
-      {
-        "id": 1358,
-        "participant_number": 1,
-        "created_at_utc": 1495557248,
-        "person": {
-          "id": 2189,
-          "name": "Daniel Lau",
-          "zulip_id": 100522,
-          "profile_path": "/directory/2189-daniel-lau",
-          "image_path": "/assets/people/daniel_lau_50.jpg"
-        }
-      },
-      {
-        "id": 1359,
-        "participant_number": 2,
-        "created_at_utc": 1495557596,
-        "person": {
-          "id": 2112,
-          "name": "Carl Joshua Factora",
-          "zulip_id": 100519,
-          "profile_path": "/directory/2112-carl-joshua-factora",
-          "image_path": "/assets/people/carl_factora_50.jpg"
-        }
-  }
-]
-"""
-
 users = [
     {
         "id": 1,
@@ -135,41 +42,6 @@ users = [
         "zulip_id": 103,
     },
 ]
-
-"""
-  {
-    "id": 70,
-    "title": "haskell",
-    "description": "first meeting around book chapters and exercises in Haskell, or FP at large. Get sense of how we can discuss / pair/ present/  help each other . google hangout also available [link](https://plus.google.com/hangouts/_/calendar/ZGNsYXUwNEBnbWFpbC5jb20.f8jj0gs4s7l9bkhk80b0vv4tn8?authuser=0) ",
-    "category": "programming_and_education",
-    "rsvp_capacity": null,
-    "allow_guests": false,
-    "archived": false,
-    "anonymize_participants": false,
-    "participant_count": 3,
-    "stream": "haskell",
-    "subject": "reading group Haskell Programming from first principles",
-    "created_at": "2017-05-23T12:34:08-04:00",
-    "start_time": "2017-05-24T11:00:00-04:00",
-    "end_time": "2017-05-24T12:00:00-04:00",
-    "rsvp_deadline": null,
-    "timezone": "America/New_York",
-    "url": "http://localhost:5000/calendar/70",
-    "created_by": {
-      "id": 2189,
-      "name": "Daniel Lau",
-      "first_name": "Daniel",
-      "profile_path": "/directory/2189-daniel-lau",
-      "image_path": "/assets/people/daniel_lau_150.jpg"
-    },
-    "location": {
-      "id": 5,
-      "name": "Lovelace - Recurse Center",
-      "address": "455 Broadway, 2nd Floor",
-      "city": "New York City, NY"
-    }
-"""
-
 def utcnow():
     return datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
 
@@ -255,7 +127,7 @@ def make_event(title, created_at, start_time, end_time, created_by, participant_
             "city": "New York City, NY",
         },
         "participants": participants,
-    },
+    }
 
 
 api_data = [
@@ -263,7 +135,7 @@ api_data = [
         "test event 1",
         created_at=time_from_english('1 day, 2 hours ago'),
         start_time=time_from_english('1 day, 1 hour ago'),
-        end_time=time_from_english('1 day, 1 hour ago'),
+        end_time=time_from_english('1 day ago'),
         created_by=random.choice(users),
         participant_count=2
     ),
@@ -285,30 +157,21 @@ api_data = [
     ),
 ]
 
+@app.template_filter('dtformat')
+def dtformat(value, format='%-m-%d-%Y at %H:%M'):
+    return dateutil.parser.parse(value).strftime(format)
+
 @app.route('/')
 def hello():
-    links = [
-        [url_for('events_html'), 'Human readable state of the dev server'],
-        [url_for('create'), 'Create a random event in the future']
-        [url_for('reset'), 'Reset dev server to initial state'],
-    ]
-    return render_template('index.html', title="Index", links=links)
-
-@app.route('/events')
-def events_html():
-    render_template('events.html')
-
-@app.route('/reset', methods=['GET'])
-def reset():
-    return render_template('reset.html', title="Reset events")
+    return render_template('index.html', title="Index", events=api_data)
 
 @app.route('/reset', methods=['POST'])
-def reset_POST():
-    return "Not implemented yet"
+def reset():
+    return "Reset not implemented"
 
 @app.route('/create', methods=['POST'])
 def create():
-    pass
+    return "Create not implemented"
 
 
 

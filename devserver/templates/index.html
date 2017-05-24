@@ -3,9 +3,34 @@
 {% block content %}
 <h1>RSVPBot dev server</h1>
 
-<ul>
-    {% for url, description in links %}
-        <li><a href="{{ url }}">{{ url }}</a> – {{ description }}</li>
+<div style="display: flex;">
+    <form action="/create" method="POST" style="margin-right: 1rem">
+        <input type="submit" value="Create a new event in the future">
+    </form>
+
+    <form action="/reset" method="POST" onsubmit="return confirm('This will reset all event data. Are you sure you want to do this?');">
+        <input type="submit" value="Reset event data" style="color: red;">
+    </form>
+</div>
+
+<ul style="margin-left: -2.25rem; margin-top: 2rem;">
+    {% for event in events %}
+        <li>
+            <div style="margin-bottom: 1rem;">
+                <strong>id</strong> {{ event.id }}<br>
+                <strong>title</strong> {{ event.title }}<br>
+                <strong>description</strong> {{ event.description }}<br>
+                <strong>date</strong> {{ event.start_time|dtformat }} – {{ event.end_time|dtformat }}<br>
+                <strong>timezone</strong> {{ event.timezone }}<br>
+                <strong>location</strong> {{ event.location.name }}, {{ event.location.address }}, {{ event.location.city }}<br>
+                <strong>participants</strong>
+                <ol>
+                    {% for participant in event.participants %}
+                        <li>{{ participant.person.name }}
+                    {% endfor %}
+                </ol>
+            </div>
+        </li>
     {% endfor %}
-</u>
+</ul>
 {% endblock %}
