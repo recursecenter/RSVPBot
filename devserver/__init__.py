@@ -28,7 +28,7 @@ def time_from_english(s):
         return utcnow()
 
     # "3 days, 1 hour, 2 minutes ago" => ["3 days", "1 hour", "2 minutes ago"]
-    parts = re.split(r',\s+', s)
+    parts = re.split(r',\s*', s)
 
     # "2 minutes ago" => ["2", "minutes", "ago"]
     # "3 days from now" => ["3", days", "from now"]
@@ -221,7 +221,6 @@ def created_on_or_after(event, date):
     return dateutil.parser.parse(event['created_at']) >= date
 
 def find_event(id):
-    id = int(id)
     return next((e for e in api_data if e['id'] == id), None)
 
 @app.route('/api/v1/events')
@@ -325,22 +324,15 @@ def join_event(user, event):
 
 @app.route('/api/v1/events/<int:id>/join', methods=['POST'])
 def join(id):
-    print('start join')
     event = find_event(id)
     if event == None:
         return not_found()
-
-    print('found event')
 
     user = find_user(request.args.get('user_param'), request.args.get('user_param_value'))
     if user == None:
         return user_not_specified()
 
-    print("found user")
-
     join_event(user, event)
-
-    print('joined event')
 
     return jsonify({
         'joined': True,
