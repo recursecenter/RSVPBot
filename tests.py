@@ -381,11 +381,16 @@ rsvp no
 
 @contextmanager
 def devserver(port):
-    os.environ['PORT'] = str(port)
     config.rc_root = 'http://localhost:{}'.format(port)
     config.rc_api_root = config.rc_root + '/api/v1'
 
-    proc = subprocess.Popen(['python', 'devserver/__init__.py'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.Popen(
+        ['python', 'devserver/__init__.py'],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env={**os.environ, 'PORT': str(port)}
+    )
 
     # wait for the dev server to come up
     time.sleep(1)
