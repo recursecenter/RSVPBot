@@ -6,7 +6,7 @@ ANNOUNCE_MESSAGE = """
 Created by {created_by}
 
 To start an RSVPBot thread for this event:
-```rsvp init {url}```
+```{key_word} init {url}```
 """.strip()
 
 MSG_CREATE_EVENT_ON_RC_CALENDAR = """

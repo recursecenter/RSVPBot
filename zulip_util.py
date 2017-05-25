@@ -20,6 +20,7 @@ def announce_event(event):
         "to": config.rsvpbot_stream,
         "subject": config.rsvpbot_announce_subject,
         "content": strings.ANNOUNCE_MESSAGE.format(
+            key_word=config.key_word,
             title=event.title,
             url=event.url,
             timestamp=event.timestamp(),

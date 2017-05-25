@@ -2,6 +2,9 @@ import os
 
 key_word = os.getenv('ZULIP_KEY_WORD', 'rsvp')
 
+if not os.getenv('RSVPBOT_PRODUCTION', None) and key_word == 'rsvp':
+    raise RuntimeError("You can't use the keyword 'rsvp' unless you're in production. Please set $ZULIP_KEY_WORD in your .env.")
+
 zulip_username = os.environ['ZULIP_RSVP_EMAIL']
 zulip_api_key = os.environ['ZULIP_RSVP_KEY']
 zulip_site = os.getenv('ZULIP_RSVP_SITE', 'https://recurse.zulipchat.com')

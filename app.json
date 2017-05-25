@@ -4,10 +4,11 @@
             "env": {
                 "PYTHONUNBUFFERED": "true",
                 "HEROKU_CI": "true",
-                "RC_ROOT": "https://www.recurse.com"
+                "RC_ROOT": "https://www.recurse.com",
+                "RSVPBOT_PRODUCTION": "true"
             },
             "scripts": {
-                "test-setup": "pip install -r requirements.txt && alembic upgrade head",
+                "test-setup": "alembic upgrade head",
                 "test": "python tests.py"
             },
             "addons": [

@@ -7,10 +7,10 @@ class RCClientError(Exception):
     pass
 
 class Client:
-    def __init__(self, id=config.rc_client_id, secret=config.rc_client_secret, api_root=config.rc_api_root):
-        self.id = id
-        self.secret = secret
-        self.api_root = api_root
+    def __init__(self, id=None, secret=None, api_root=None):
+        self.id = id or config.rc_client_id
+        self.secret = secret or config.rc_client_secret
+        self.api_root = api_root or config.rc_api_root
 
     def get_event(self, id, include_participants=False):
         r = self.get("events/{}".format(id), params={'include_participants': include_participants})

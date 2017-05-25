@@ -20,7 +20,7 @@ RSVPBot lets you associate a Zulip thread with an RC calendar event, and lets pe
 
 ## Running
 
-This bot uses Python 3 and is built to be deployed on Heroku and run using `heroku local`. You can set up environment variables by defining a `.env` in the root of your local repo:
+This bot uses Python 3 and is built to be deployed on Heroku. RSVPBot will automatically load any environment variables you set in a file called `.env` in the root of your local repo:
 
 ```
 DATABASE_URL=postgres://localhost/rsvpbot
@@ -30,9 +30,14 @@ ZULIP_RSVP_EMAIL=your-test-rsvp-bot@recurse.zulipchat.com
 ZULIP_RSVP_KEY=YOUR_API_KEY
 ZULIP_RSVP_SITE=https://recurse.zulipchat.com
 
+ZULIP_KEY_WORD=rsvptest
+
 RC_CLIENT_ID=fake-client-id
 RC_CLIENT_SECRET=fake-client-secret
-RC_API_ROOT=http://localhost:4000/api/v1
+RC_ROOT=http://localhost:5000
+
+RSVPBOT_STREAM=bot-test
+RSVPBOT_ANNOUNCE_SUBJECT="My RSVPBot testing announce"
 ```
 
 ### One-time setup
@@ -45,7 +50,7 @@ pip install -r requirements.txt
 createdb rsvpbot
 
 # Runs migrations. See `alembic help` for more info.
-heroku local:run alembic upgrade head
+alembic upgrade head
 ```
 
 ### Running the code
@@ -57,17 +62,46 @@ The `heroku` commands load environmental variables from your `.env` file. (You c
 heroku local
 
 # To run the tests
-heroku local:run python tests.py
-
-# To open a REPL
-heroku local:run python
+python tests.py
 ```
 
 ### Developing without API access
 
 RSVPBot relies on a special permission in the recurse.com API that lets it access events and RSVP on behalf of any user. This makes it hard for someone without access to the recurse.com codebase to work on RSVPBot.
 
-To get around this problem, we will be building a "dev server" that you can run locally that mimics the recurse.com events API. We'll be adding this to the RSVPBot repository shortly.
+To get around this problem, we've built a "dev server" that you can run locally that mimics the recurse.com events API. You can find the dev server in the devserver folder. The example `.env` file above is configured to work with the dev server.
+
+To run the dev server:
+
+```
+python devserver/__init__.py
+```
+
+To run the dev server with a different port:
+
+```
+PORT=12345 python devserver/__init__.py
+```
+
+If you are making changes to RSVPBot that require changes to the API, make those changes in the devserver and include them as part of your PR. Once the feature is settled and the code has been reviewed, we'll make the same API changes on recurse.com and then merge and deploy your PR.
+
+To have the dev server reload itself every time you change its source:
+
+```
+FLASK_DEBUG=1 python devserver/__init__.py
+```
+
+**WARNING**: If you use FLASK_DEBUG=1, the dev server state will be reset every time you change the code. When this happens, you may have to clean out the events in your database:
+
+```
+echo 'DELETE FROM events;' | psql rsvpbot
+```
+
+If you load the dev server index in your browser, you can see the current state, create new events, and reset the state.
+
+### Specifying users
+
+The dev server has a hardcoded set of users. When you specify a user (for the join and leave api endpoints), the dev server will ignore the Zulip ID of the users and return a user for any Zulip ID you specify. For any specified Zulip ID, the same user will always be returned. This can make the effects of `rsvptest yes` and `rsvptest no` a bit confusing.
 
 ## Commands
 **Command**|**Description**
