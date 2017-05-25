@@ -222,7 +222,6 @@ class RSVPDecisionTest(RSVPTest):
 
     def test_rsvp_thumbs_up(self):
         self.general_yes('rsvp :thumbs_up:')
-        self.assertTrue(False)
 
     def test_rsvp_thumbsdown(self):
         self.general_no('rsvp :thumbsdown:')
