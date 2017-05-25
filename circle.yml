@@ -9,6 +9,7 @@ machine:
     ZULIP_RSP_KEY: fake-key
     RC_CLIENT_ID: fake-client-id
     RC_CLIENT_SECRET: fake-client-secret
+    DATABASE_URL: postgresql://localhost/circle_test
 test:
   pre:
     - alembic upgrade head
