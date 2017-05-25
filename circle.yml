@@ -1,0 +1,9 @@
+machine:
+  python:
+    version: 3.6.1
+test:
+  pre:
+    - alembic upgrade head
+  override:
+    - python tests.py
+
