@@ -7,7 +7,7 @@
                 "RC_ROOT": "https://www.recurse.com"
             },
             "scripts": {
-                "test-setup": "pip install -r requirements.txt && alembic upgrade head",
+                "test-setup": "alembic upgrade head",
                 "test": "python tests.py"
             },
             "addons": [

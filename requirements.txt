@@ -18,4 +18,4 @@ SQLAlchemy==1.1.9
 tap.py==2.1
 typing==3.6.1
 Werkzeug==0.12.2
--e git+https://github.com/zulip/zulip.git@61d5d410675b686be9fa3ac4a0172246b2d772da#egg=zulip&subdirectory=api
+zulip-beta==0.2.5
