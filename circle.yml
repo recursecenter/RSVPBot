@@ -10,12 +10,10 @@ machine:
     RC_CLIENT_ID: fake-client-id
     RC_CLIENT_SECRET: fake-client-secret
     DATABASE_URL: postgresql://localhost/circle_test
+    CIRCLE_CI: 1
 test:
   pre:
     - alembic upgrade head
   override:
     - mkdir -p $CIRCLE_TEST_REPORTS/reports
     - python tests.py
-general:
-   artifacts:
-     - $CIRCLE_TEST_REPORTS
