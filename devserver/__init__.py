@@ -224,7 +224,7 @@ def find_event(id):
     return next((e for e in api_data if e['id'] == id), None)
 
 def filter_participants(event):
-    include_participants = request.args.get('include_participants', '').lower()
+    include_participants = request.values.get('include_participants', '').lower()
     if include_participants == 'true':
         return event
     else:
@@ -238,12 +238,12 @@ def render_events(events):
 
 @app.route('/api/v1/events')
 def events():
-    if 'created_at_or_after' in request.args:
-        date = parse_date(request.args['created_at_or_after'])
+    if 'created_at_or_after' in request.values:
+        date = parse_date(request.values['created_at_or_after'])
         events = [event for event in api_data if created_on_or_after(event, date)]
         return render_events(sort_by_start_time(events))
-    elif 'ids' in request.args:
-        ids = json.loads(request.args['ids'])
+    elif 'ids' in request.values:
+        ids = json.loads(request.values['ids'])
         return render_events(e for e in map(find_event, ids) if e)
     else:
         return render_events([])
@@ -336,7 +336,7 @@ def join(id):
     if event == None:
         return not_found()
 
-    user = find_user(request.args.get('user_param'), request.args.get('user_param_value'))
+    user = find_user(request.values.get('user_param'), request.values.get('user_param_value'))
     if user == None:
         return user_not_specified()
 
@@ -356,7 +356,7 @@ def leave(id):
     if event == None:
         return not_found()
 
-    user = find_user(request.args.get('user_param'), request.args.get('user_param_value'))
+    user = find_user(request.values.get('user_param'), request.values.get('user_param_value'))
     if user == None:
         return user_not_specified()
 
