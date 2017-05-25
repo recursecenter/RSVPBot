@@ -223,17 +223,30 @@ def created_on_or_after(event, date):
 def find_event(id):
     return next((e for e in api_data if e['id'] == id), None)
 
+def filter_participants(event):
+    include_participants = request.args.get('include_participants', '').lower()
+    if include_participants == 'true':
+        return event
+    else:
+        return {k: v for k, v in event.items() if k != 'participants'}
+
+def render_event(event):
+    return jsonify(filter_participants(event))
+
+def render_events(events):
+    return jsonify([filter_participants(event) for event in events])
+
 @app.route('/api/v1/events')
 def events():
     if 'created_at_or_after' in request.args:
         date = parse_date(request.args['created_at_or_after'])
         events = [event for event in api_data if created_on_or_after(event, date)]
-        return jsonify(sort_by_start_time(events))
+        return render_events(sort_by_start_time(events))
     elif 'ids' in request.args:
         ids = json.loads(request.args['ids'])
-        return jsonify([find_event(id) for id in ids if find_event(id) is not None])
+        return render_events(e for e in map(find_event, ids) if e)
     else:
-        return jsonify([])
+        return render_events([])
 
 def not_found():
     response = jsonify({"message":"not_found"})
@@ -251,12 +264,7 @@ def event(id):
     if event == None:
         return not_found()
 
-    include_participants = request.args.get('include_participants', '').lower()
-
-    if include_participants == 'true':
-        return jsonify(event)
-    else:
-        return jsonify({k: v for k, v in event.items() if k != 'participants'})
+    return render_event(event)
 
 
 def slice(dict, *keys):
@@ -276,14 +284,14 @@ def update_event(id):
     j = request.get_json()
 
     if not j or 'event' not in j:
-       return jsonify(event)
+       return render_event(event)
 
     updates = slice(j['event'], *update_attributes)
 
     for k, v in updates.items():
         event[k] = v
 
-    return jsonify(event)
+    return render_event(event)
 
 # If user_param and user_param_value are set correctly
 # find_user will always return a user, regardless of
