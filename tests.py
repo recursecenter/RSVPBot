@@ -386,9 +386,9 @@ def devserver(port):
 
     proc = subprocess.Popen(
         ['python', 'devserver/__init__.py'],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        #stdin=subprocess.DEVNULL,
+        #stdout=subprocess.DEVNULL,
+        #stderr=subprocess.DEVNULL,
         env={**os.environ, 'PORT': str(port)}
     )
 
