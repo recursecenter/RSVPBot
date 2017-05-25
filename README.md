@@ -97,6 +97,12 @@ FLASK_DEBUG=1 python devserver/__init__.py
 echo 'DELETE FROM events;' | psql rsvpbot
 ```
 
+If you load the dev server index in your browser, you can see the current state, create new events, and reset the state.
+
+### Specifying users
+
+The dev server has a hardcoded set of users. When you specify a user (for the join and leave api endpoints), the dev server will ignore the Zulip ID of the users and return a user for any Zulip ID you specify. For any specified Zulip ID, the same user will always be returned. This can make the effects of `rsvptest yes` and `rsvptest no` a bit confusing.
+
 ## Commands
 **Command**|**Description**
 --- | ---
