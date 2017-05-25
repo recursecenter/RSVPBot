@@ -366,5 +366,4 @@ def leave(id):
 
 
 if __name__ == "__main__":
-    import pprint; pprint.pprint(dict(os.environ))
     app.run(port=int(os.getenv('PORT', 5000)), threaded=True)
