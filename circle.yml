@@ -16,3 +16,6 @@ test:
   override:
     - mkdir -p $CIRCLE_TEST_REPORTS/reports
     - python tests.py
+general:
+   artifacts:
+     - $CIRCLE_TEST_REPORTS
