@@ -241,6 +241,11 @@ def not_found():
     response.status_code = 404
     return response
 
+def user_not_specified():
+    response = jsonify({"message": "user_not_specified"})
+    response.status_code = 422
+    return response
+
 @app.route('/api/v1/events/<int:id>', methods=['GET'])
 def event(id):
     event = find_event(id)
@@ -281,13 +286,84 @@ def update_event(id):
 
     return jsonify(event)
 
+# If user_param and user_param_value are set correctly
+# find_user will always return a user, regardless of
+# what zulip_id is submitted.
+def find_user(user_param, user_param_value):
+    if user_param != 'zulip_id' or user_param_value == None:
+        return None
+
+    try:
+        zulip_id = int(user_param_value)
+    except ValueError:
+        return None
+
+    return users[zulip_id % len(users)]
+
+def find_participant(user, event):
+    for participant in event['participants']:
+        if participant['person'] == user:
+            return participant
+
+    return None
+
+def leave_event(user, event):
+    participant = find_participant(user, event)
+
+    if participant:
+        event['participants'] = [p for p in event['participants'] if p != participant]
+
+def join_event(user, event):
+    participant = find_participant(user, event)
+
+    if not participant:
+        next_participant_number = len(event['participants']) + 1
+        participant = make_participant(user=user,
+                                       participant_number=next_participant_number,
+                                       created_at=utcnow())
+        event['participants'].append(participant)
+
 @app.route('/api/v1/events/<int:id>/join', methods=['POST'])
 def join(id):
-    pass
+    print('start join')
+    event = find_event(id)
+    if event == None:
+        return not_found()
+
+    print('found event')
+
+    user = find_user(request.args.get('user_param'), request.args.get('user_param_value'))
+    if user == None:
+        return user_not_specified()
+
+    print("found user")
+
+    join_event(user, event)
+
+    print('joined event')
+
+    return jsonify({
+        'joined': True,
+        'rsvps_disabled': False,
+        'event_archived': False,
+        'over_capacity': False,
+        'past_deadline': False,
+    })
 
 @app.route('/api/v1/events/<int:id>/leave', methods=['POST'])
 def leave(id):
-    pass
+    event = find_event(id)
+    if event == None:
+        return not_found()
+
+    user = find_user(request.args.get('user_param'), request.args.get('user_param_value'))
+    if user == None:
+        return user_not_specified()
+
+    leave_event(user, event)
+
+    return jsonify({})
+
 
 if __name__ == "__main__":
     app.run(port=int(os.getenv('PORT', 5000)))
