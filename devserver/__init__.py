@@ -358,4 +358,4 @@ def leave(id):
 
 
 if __name__ == "__main__":
-    app.run(port=int(os.getenv('PORT', 5000)))
+    app.run(port=int(os.getenv('PORT', 5000)), threaded=True)
