@@ -14,4 +14,5 @@ test:
   pre:
     - alembic upgrade head
   override:
+    - mkdir -p $CIRCLE_TEST_REPORTS/testunit
     - python tests.py

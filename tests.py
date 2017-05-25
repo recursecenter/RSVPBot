@@ -6,6 +6,7 @@ from collections import Counter
 from datetime import date, timedelta
 import dateutil.parser
 import os
+import os.path
 import sys
 from contextlib import contextmanager
 import subprocess
@@ -14,8 +15,7 @@ import random
 
 import unittest
 from unittest.mock import patch
-
-from tap import TAPTestRunner
+import xmlrunner
 
 import requests
 
@@ -33,7 +33,7 @@ class RSVPTest(unittest.TestCase):
     def setUp(self):
         super().setUp()
 
-        requests.post('http://localhost:{}/reset'.format(devserver_port))
+        requests.post('{}/reset'.format(config.rc_root))
 
         p1 = patch('zulip_util.announce_event')
         p2 = patch('zulip_util.send_message')
@@ -401,25 +401,15 @@ def devserver(port):
         proc.kill()
         proc.wait()
 
-devserver_port = None
 
 if __name__ == '__main__':
     devserver_port = random.randint(10000, 50000)
 
     with devserver(devserver_port):
-        if os.getenv('HEROKU_CI', None):
-            tests_dir = os.path.dirname(os.path.abspath(__file__))
-            loader = unittest.TestLoader()
-            tests = loader.discover(tests_dir)
-            runner = TAPTestRunner()
-            runner.set_stream(True)
-            runner.set_outdir(False)
+        if os.getenv('CIRCLE_CI', None):
+            basedir = os.getenv('CIRCLE_TEST_REPORTS', "reports")
+            outputdir = os.path.join(basedir, "unittest")
 
-            result = runner.run(tests)
-            if result.wasSuccessful():
-                sys.exit(0)
-            else:
-                sys.exit(1)
-
+            unittest.main(testRunner=xmlrunner.XMLTestRunner(outputdir))
         else:
             unittest.main()

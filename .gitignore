@@ -62,7 +62,8 @@ docs/_build/
 target/
 events.json
 
-
 venv
 .vscode
 .env
+
+reports
