@@ -1,9 +1,16 @@
 machine:
   python:
     version: 3.6.1
+  environment:
+    PYTHONUNBUFFERED: true
+    RC_ROOT: http://localhost:5000/ # overridden by tests.py
+    RSVPBOT_PRODUCTION: true
+    ZULIP_RSVP_EMAIL: fake-email@recurse.zulipchat.com
+    ZULIP_RSP_KEY: fake-key
+    RC_CLIENT_ID: fake-client-id
+    RC_CLIENT_SECRET: fake-client-secret
 test:
   pre:
     - alembic upgrade head
   override:
     - python tests.py
-
