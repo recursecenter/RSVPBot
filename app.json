@@ -4,7 +4,8 @@
             "env": {
                 "PYTHONUNBUFFERED": "true",
                 "HEROKU_CI": "true",
-                "RC_ROOT": "https://www.recurse.com"
+                "RC_ROOT": "https://www.recurse.com",
+                "RSVPBOT_PRODUCTION": "true"
             },
             "scripts": {
                 "test-setup": "alembic upgrade head",
