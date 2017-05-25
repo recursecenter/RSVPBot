@@ -275,7 +275,7 @@ def update_event(id):
 
     j = request.get_json()
 
-    if not j or not j['event']:
+    if not j or 'event' not in j:
        return jsonify(event)
 
     updates = slice(j['event'], *update_attributes)
