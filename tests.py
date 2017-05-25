@@ -222,6 +222,7 @@ class RSVPDecisionTest(RSVPTest):
 
     def test_rsvp_thumbs_up(self):
         self.general_yes('rsvp :thumbs_up:')
+        assertFalse(True)
 
     def test_rsvp_thumbsdown(self):
         self.general_no('rsvp :thumbsdown:')
@@ -408,7 +409,7 @@ if __name__ == '__main__':
     with devserver(devserver_port):
         if os.getenv('CIRCLE_CI', None):
             basedir = os.getenv('CIRCLE_TEST_REPORTS', "reports")
-            outputdir = os.path.join(basedir, "unittest")
+            outputdir = os.path.join(basedir, "reports")
 
             unittest.main(testRunner=xmlrunner.XMLTestRunner(outputdir))
         else:
