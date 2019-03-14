@@ -1,6 +1,6 @@
 alembic==0.9.1
 click==6.7
-Flask==0.12.2
+Flask==0.12.4
 itsdangerous==0.24
 Jinja2==2.9.6
 Mako==1.0.6
@@ -11,7 +11,7 @@ python-dateutil==2.6.0
 python-dotenv==0.6.4
 python-editor==1.0.3
 pytz==2017.2
-requests==2.14.2
+requests==2.21.0
 simplejson==3.10.0
 six==1.10.0
 SQLAlchemy==1.1.9
