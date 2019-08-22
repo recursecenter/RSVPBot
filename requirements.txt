@@ -18,5 +18,5 @@ SQLAlchemy==1.1.9
 tap.py==2.1
 typing==3.6.1
 unittest-xml-reporting==2.1.0
-Werkzeug==0.12.2
+Werkzeug==0.15.3
 zulip-beta==0.2.5
