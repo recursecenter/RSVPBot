@@ -15,7 +15,7 @@ jobs:
           RC_CLIENT_SECRET: fake-client-secret
           DATABASE_URL: postgresql://localhost/rsvpbot_test
 
-      - image: circleci/postgres:14.6
+      - image: cimg/postgres:14.6
         environment:
           POSTGRES_USER: circleci
           POSTGRES_DB: rsvpbot_test
