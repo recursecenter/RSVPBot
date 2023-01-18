@@ -3,6 +3,7 @@ orbs:
   python: circleci/python@2
 jobs:
   build:
+    executor: python/default
     working_directory: ~/rsvpbot
 
     docker:
@@ -23,26 +24,12 @@ jobs:
           POSTGRES_DB: rsvpbot_test
 
     steps:
-      - restore_cache:
-          keys:
-            - source-{{ .Branch }}-{{ .Revision }}
-            - source-{{ .Branch }}-
-            - source-
-
       - checkout
-
-      - save_cache:
-          key: source-v1-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ".git"
-
       - python/install-packages:
           pkg-manager: pip
-      
       - run:
           name: Run migrations
           command: alembic upgrade head
-
       - run:
-          name: Tests
+          name: Run tests
           command: python tests.py
