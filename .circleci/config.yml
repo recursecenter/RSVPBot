@@ -4,7 +4,7 @@ jobs:
     working_directory: ~/rsvpbot
 
     docker:
-      - image: circleci/python:3.7.2
+      - image: cimg/python:3.11.1
         environment:
           PYTHONUNBUFFERED: true
           RC_ROOT: http://localhost:5000/ # overridden by tests.py
@@ -15,7 +15,7 @@ jobs:
           RC_CLIENT_SECRET: fake-client-secret
           DATABASE_URL: postgresql://localhost/rsvpbot_test
 
-      - image: circleci/postgres:9.6.12
+      - image: circleci/postgres:14.6
         environment:
           POSTGRES_USER: circleci
           POSTGRES_DB: rsvpbot_test
