@@ -407,8 +407,6 @@ if __name__ == '__main__':
 
     with devserver(devserver_port):
         if os.getenv('CI', None):
-            print("YES!")
             unittest.main(testRunner=xmlrunner.XMLTestRunner("test_results"))
         else:
-            print("NO!")
             unittest.main()

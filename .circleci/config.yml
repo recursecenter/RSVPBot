@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   python: circleci/python@2
 jobs:
-  build:
+  build_and_test:
     executor: python/default
     working_directory: ~/rsvpbot
 
