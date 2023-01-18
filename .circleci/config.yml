@@ -1,4 +1,6 @@
-version: 2
+version: 2.1
+orbs:
+  python: circleci/python@2
 jobs:
   build:
     working_directory: ~/rsvpbot
@@ -34,10 +36,9 @@ jobs:
           paths:
             - ".git"
 
-      - run:
-          name: Install dependencies
-          command: sudo pip install -r requirements.txt
-
+      - python/install-packages:
+          pkg-manager: pip
+      
       - run:
           name: Run migrations
           command: alembic upgrade head
