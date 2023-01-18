@@ -1,5 +1,6 @@
 import secrets
 from os import environ
+import re
 
 import dateutil.parser
 import pytz
@@ -14,7 +15,10 @@ import zulip_util
 import rc
 import strings
 
-engine = create_engine(environ['DATABASE_URL'], echo=True)
+def database_url():
+    return re.sub(r'^postgres://', 'postgresql://', environ['DATABASE_URL'])
+
+engine = create_engine(database_url(), echo=True)
 Base = declarative_base()
 
 session_factory = sessionmaker(bind=engine)

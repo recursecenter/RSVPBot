@@ -13,7 +13,7 @@ import sys
 
 sys.path.append(os.getcwd())
 
-from models import Base
+from models import Base, database_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -34,7 +34,7 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-config.set_main_option("sqlalchemy.url", os.environ['DATABASE_URL'])
+config.set_main_option("sqlalchemy.url", database_url())
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
