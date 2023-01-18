@@ -406,13 +406,9 @@ if __name__ == '__main__':
     devserver_port = random.randint(10000, 50000)
 
     with devserver(devserver_port):
-        if os.getenv('CIRCLE_CI', None):
+        if os.getenv('CI', None):
             print("YES!")
-            print("CIRCLE_CI", os.getenv('CIRCLE_CI', None))
-            outputdir = os.getenv('CIRCLE_TEST_REPORTS', "reports")
-            print("outputdir", outputdir)
-
-            unittest.main(testRunner=xmlrunner.XMLTestRunner(outputdir))
+            unittest.main(testRunner=xmlrunner.XMLTestRunner("test_results"))
         else:
             print("NO!")
             unittest.main()

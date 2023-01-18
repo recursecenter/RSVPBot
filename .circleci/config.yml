@@ -33,3 +33,5 @@ jobs:
       - run:
           name: Run tests
           command: python tests.py
+      - store_test_results:
+          path: test_results
