@@ -1,5 +1,3 @@
-from __future__ import with_statement
-
 # Do this early in case anything depends on .env
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
