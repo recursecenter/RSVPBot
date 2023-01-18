@@ -407,9 +407,12 @@ if __name__ == '__main__':
 
     with devserver(devserver_port):
         if os.getenv('CIRCLE_CI', None):
-            basedir = os.getenv('CIRCLE_TEST_REPORTS', "reports")
-            outputdir = os.path.join(basedir, "reports")
+            print("YES!")
+            print("CIRCLE_CI", os.getenv('CIRCLE_CI', None))
+            outputdir = os.getenv('CIRCLE_TEST_REPORTS', "reports")
+            print("outputdir", outputdir)
 
             unittest.main(testRunner=xmlrunner.XMLTestRunner(outputdir))
         else:
+            print("NO!")
             unittest.main()
