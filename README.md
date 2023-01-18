@@ -16,7 +16,7 @@ RSVPBot lets you associate a Zulip thread with an RC calendar event, and lets pe
 
 * PostgreSQL
 * [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
-* Python 3
+* Python 3.11
 
 ## Running
 
@@ -43,7 +43,7 @@ RSVPBOT_ANNOUNCE_SUBJECT="My RSVPBot testing announce"
 ### One-time setup
 
 ```
-python3 -m venv venv
+python3.11 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 

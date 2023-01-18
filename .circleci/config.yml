@@ -1,10 +1,13 @@
-version: 2
+version: 2.1
+orbs:
+  python: circleci/python@2
 jobs:
   build:
+    executor: python/default
     working_directory: ~/rsvpbot
 
     docker:
-      - image: circleci/python:3.7.2
+      - image: cimg/python:3.11.1
         environment:
           PYTHONUNBUFFERED: true
           RC_ROOT: http://localhost:5000/ # overridden by tests.py
@@ -15,33 +18,20 @@ jobs:
           RC_CLIENT_SECRET: fake-client-secret
           DATABASE_URL: postgresql://localhost/rsvpbot_test
 
-      - image: circleci/postgres:9.6.12
+      - image: cimg/postgres:14.6
         environment:
           POSTGRES_USER: circleci
           POSTGRES_DB: rsvpbot_test
 
     steps:
-      - restore_cache:
-          keys:
-            - source-{{ .Branch }}-{{ .Revision }}
-            - source-{{ .Branch }}-
-            - source-
-
       - checkout
-
-      - save_cache:
-          key: source-v1-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ".git"
-
-      - run:
-          name: Install dependencies
-          command: sudo pip install -r requirements.txt
-
+      - python/install-packages:
+          pkg-manager: pip
       - run:
           name: Run migrations
           command: alembic upgrade head
-
       - run:
-          name: Tests
+          name: Run tests
           command: python tests.py
+      - store_test_results:
+          path: test_results

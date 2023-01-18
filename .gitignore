@@ -66,4 +66,4 @@ venv
 .vscode
 .env
 
-reports
+test_results
